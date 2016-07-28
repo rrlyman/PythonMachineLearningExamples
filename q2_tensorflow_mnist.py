@@ -15,7 +15,7 @@
 # limitations under the License.
 # ==============================================================================
 
-This sample program is a modified version of the Google MNIST convolutional 
+This sample program is a modified version of the Google mnist convolutional 
 network tutorial example.  See the mnist tutorial in www.tensorflow.org 
 
 The tutorial version of the program is modified in order to send some
@@ -34,12 +34,11 @@ import numpy as np
    
 def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
  
-    mnist = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
+    ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
                                 output_feature_list=output_feature_list,
                                 test_size = .1,
                                 engine_type='tensorflow')
 
-    mnist.train.dump_values()
         
     """# ==============================================================================
     
@@ -60,45 +59,46 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     dataset
     
     """# ==============================================================================
+
     
-    nRows = mnist.train.num_rows #image height
-    nCols = mnist.train.num_columns #image width
-    
-    nFc = 1024      # size of fully connected layer
-    nConv1 = 32     # size of first convolution layer
-    nConv2 = 64     # size of second convolution layer
-    #n_h_pool2_outputs = int(nRows/4) * int(nCols/4) * nConv2 # number of outputs of second pooling layer
-    nTarget = mnist.train.feature_width[0]  # the number of one_hot features in the target, 'm_label'
-    
-    # Set the keys of the namedtuple to be the feature names
-    Place_Holders = namedtuple('Place_Holders', output_feature_list)
+
     lst = []
     extra_features_width = 0 # width of extra features
     
     for i,nm in enumerate(output_feature_list):
-        # The first feature is the target, 'm_label_one_hot' 
-        # the second features is the 'image' that is passed to the convolution layers 
+        
+        # features[0], is the target, 'm_label_one_hot' 
+        # the second features[1] is the 'image' that is passed to the convolution layers 
         # Any additional features bypass the convolution layers and go directly 
-        # into the fully connected layer.
+        # into the fully connected layer.  
+        
+        # The width of the extra features is calculated in order to allocate 
+        # the correct widths of weights,  # and inputs 
+        # names are assigned to make the look pretty on the tensorboard graph.
+        
         if i == 0:
             nm = 'y_'+nm
         else:
             nm = 'x_'+nm
         if i>1:
-            extra_features_width += mnist.train.feature_width[i]
-        lst.append(tf.placeholder(tf.float32, shape=[None, mnist.train.feature_width[i]], name=nm))
+            extra_features_width += ds.train.feature_width[i]
+        lst.append(tf.placeholder(tf.float32, shape=[None, ds.train.feature_width[i]], name=nm))
         
     # ph is a named tuple with key names like 'image', 'm_label', and values that
-    # are tensors.  The display name on the graph are 'y_m_label', 'x_image, 
+    # are tensors.  The display name on the Chrome graph are 'y_m_label', 'x_image, 
     # x_upper_case etc.
+    Place_Holders = namedtuple('Place_Holders', output_feature_list)   
     ph = Place_Holders(*lst) # unpack placeholders into named Tuple
-    
-    # compute the number of features input to the fully connected layer
-    
+        
+    nRows = ds.train.num_rows #image height
+    nCols = ds.train.num_columns #image width    
+    nFc = 1024      # size of fully connected layer
+    nConv1 = 32     # size of first convolution layer
+    nConv2 = 64     # size of second convolution layer
+    nTarget = ds.train.feature_width[0]  # the number of one_hot features in the target, 'm_label'    
     n_h_pool2_outputs = int(nRows/4) * int(nCols/4) * nConv2 # second pooling layer 
     n_h_pool2_outputsx = n_h_pool2_outputs + extra_features_width # fully connected
         
-    
     """# ==============================================================================
     
     Build a Multilayer Convolutional Network
@@ -192,7 +192,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
         h_pool2_flat = tf.reshape(h_pool2, [-1, n_h_pool2_outputs])
         
         # append the features, the 2nd on, that go directly to the fully connected layer
-        for i in range(2,mnist.train.num_features ):
+        for i in range(2,ds.train.num_features ):
             h_pool2_flat = tf.concat(1, [h_pool2_flat, ph[i]])  
         h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
     
@@ -242,11 +242,11 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     for i in range(4):
         tm += str(tp[i])+'-'
     tm += str(tp[4])    
-    writer = tf.train.SummaryWriter("/tmp/mnist_logs/"+ tm, sess.graph_def)
+    writer = tf.train.SummaryWriter("/tmp/ds_logs/"+ tm, sess.graph_def)
     
     # To see the results in Chrome, 
     # Run the following in terminal to activate server.
-    # tensorboard --logdir '/tmp/mnist_logs/'
+    # tensorboard --logdir '/tmp/ds_logs/'
     # See results on localhost:6006 
     
     sess.run(tf.initialize_all_variables())
@@ -254,11 +254,11 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     perfect_count=10
     for i in range(nEpochs):
     
-        batch = mnist.train.next_batch(100)
+        batch = ds.train.next_batch(100)
         # assign feature data to each placeholder
         # the batch list is returned in the same order as the features requested
         feed = {keep_prob: 0.5}
-        for j in range(mnist.train.num_features):
+        for j in range(ds.train.num_features):
             feed[ph[j]] = batch[j]  
             
         if i%100 == 0:
@@ -305,19 +305,16 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
         
     test_accuracy=0
     m=0
-    for n in range(0,mnist.test.features[0].shape[0],100 ):   
-        for i in range(mnist.train.num_features ):  
-            feed[ph[i]] = mnist.test.features[i] [n:n+100]
+    for n in range(0,ds.test.features[0].shape[0],100 ):   
+        for i in range(ds.train.num_features ):  
+            feed[ph[i]] = ds.test.features[i] [n:n+100]
         result = sess.run([accuracy, x_image, W_conv1, correct_prediction], feed_dict=feed)    
         test_accuracy += result[0]
         error_images = np.append(error_images, result[1][:,:,:,0][result[3]==False],axis=0)
         m += 1
     if error_images.shape[0]>0:                           
         print ("test accuracy {}".format(test_accuracy/m),flush=True)       
-        ocr_utils.montage(error_images,title='TensorFlow Error Images')
-    
-    X=np.transpose(result[2],(0,1,3,2))[:,:,:,0] #drop axis 3
-    ocr_utils.montage(X,title='TensorFlow  W_conv1')
+        ocr_utils.montage(error_images,title='TensorFlow {} Error Images'.format(input_filters_dict['font']))
     
     tf.reset_default_graph() # only necessary when iterating through fonts
     sess.close()
@@ -351,28 +348,26 @@ if True:
     # output only the character label and the image
     # output_feature_list = ['m_label_one_hot','image'] 
     
-    input_filters_dict = {'font': ('TIMES',)}
+    input_filters_dict = {'font': ('E13B',)}
     output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']    
-
     train_a_font(input_filters_dict,  output_feature_list, nEpochs = 1000)    
     
 else:
     # loop through all the fonts and train individually
 
     # pick up the entire list of fonts and font variants. Train each one.
-    lst = sorted(ocr_utils.get_list(columns=('font')))
+    lst = ocr_utils.get_list(columns=('font'))
     
     import pprint as pprint
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(lst)
-    
+   
     output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']
     
-    # number of training iterations. Change this to 5000 for meaningful results
-
+    # Change nEpochs to 5000 for better results
     for l in lst:
         input_filters_dict= {'font': (l[0],)}       
-        train_a_font(input_filters_dict,output_feature_list, nEpochs = 1000) 
+        train_a_font(input_filters_dict,output_feature_list, nEpochs = 100) 
     
     
 print ('\n########################### No Errors ####################################')
