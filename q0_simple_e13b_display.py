@@ -12,7 +12,7 @@ from Python Machine Learning by Sebastian Raschka
 '''
 import ocr_utils
 import numpy as np
-
+ 
 #############################################################################
 # read images and scatter plot
 
@@ -51,26 +51,6 @@ y,X = ds.train.features
 X=np.reshape(X,(X.shape[0],ds.train.num_rows, ds.train.num_columns))
 ocr_utils.montage(X,title='E13B Characters {}'.format(legend))
 
-#############################################################################
-# read and show the character images of digits 0 through 9 
 
-ascii_characters_to_train = range(48,58)
-fd = {'m_label': ascii_characters_to_train, 'font': 'E13B'}
-
-ds = ocr_utils.read_data(input_filters_dict=fd, output_feature_list=fl, dtype=np.int32)   
-y,X = ds.train.features
-
-num_characters = len(np.unique(y))
-
-# display 10 of each image
-zz = np.zeros((10*num_characters, ds.train.num_rows* ds.train.num_columns) )
-for i,ys  in enumerate(np.unique(y)):
-    x = X[y==ys]    
-    n = min(10,x.shape[0])
-    zz[i*10:i*10+n,:] = x[0:n,:]
-
-# change to a 2D shape and plot 
-zz=np.reshape(zz,(zz.shape[0],ds.train.num_rows, ds.train.num_columns))
-ocr_utils.montage(zz, title='Sample of E13B Characters')
 
 print ('\n########################### No Errors ####################################')
