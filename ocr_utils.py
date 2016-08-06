@@ -7,7 +7,7 @@ Utility programs for accessing the database of character images.
 Contains database access functions:
     load_E13B: special purpose function to return computed column Sums from E13B font
     read_data: general purpose function for returning a list of features from
-        the database
+        the databasea
     get_list: returns a list of the types of items in the database
 
 Miscellaneous Plot Functions:
@@ -90,7 +90,7 @@ def read_file(pathName, input_filters_dict, random_state=None):
     with ZipFile(pathName, 'r') as myzip:
         if len(rd_font) == 0:
             names = myzip.namelist()            
-            print ('reading all files...please wait')
+            print ('\nreading all files...please wait')
             df = pd.concat(pd.read_csv(myzip.open(fname,'r')) for fname in names)        
         else:
             try:
@@ -249,7 +249,7 @@ class TruthedCharacters(object):
 
             ds.train.dump_values()
     ''' 
-        print('output sample - one column shown;')        
+        print('\nfeature output sample;')        
         for ftr,ftrName in zip(self.features,self.feature_names):            
             print('\t'+ftrName.ljust(20), end=': ')    
             if len(ftr.shape)==1:
@@ -416,10 +416,6 @@ def read_data(fileName="fonts.zip",
 
         delivered = sorted(df.loc[:,key].unique())
         print("\t{}(s) : {}".format(key, delivered))
-      
-    # apply the column filters to the incoming data
-    for key in available_columns:  
-        delivered = sorted(df.loc[:,key].unique()) 
          
     h=int((df.iloc[0])['h'])  # get height and width of the image
     w=int((df.iloc[0])['w'])  # assumes that h and w are the same for all rows
@@ -698,40 +694,40 @@ def compute_column_sum(npx,h,w):
     npx = np.reshape(npx,(npx.shape[0],h,w))
     return np.sum(npx,axis=1) # sum of rows in each column    
 
-def best_skewed_character(X, svm, skewRange, rows, columns,columnsXY):  
-    '''
-    given an image and a classifier, run the image through a number
-    of sheared versions and return the image with the highest
-    probability of being correct
-        
-    Parameters
-    --------------
-    X numpy array shape (rows*columns)
-    svm = classifier
-    skewRange tuple containing skew values -1 to 1 to try 
-    rows = number of rows in the image
-    columns = number of columns in the image
-    columnsXY is the column sums to return e.g. (9,17) returns the sum
-        of the pixels in column 9 and the sum of the pixels in column 17 
-    
-    Returns:
-    --------------- 
-    numpy array flattened version of the best image. shape (rows*columns)
-    numpy array 2D version of the best version shape (rows,columns)
-    '''
-    
-         
-    images = np.zeros((len(skewRange),rows, columns))    
-    image = np.reshape(X,(rows,columns))    
-    for i,skew in enumerate(skewRange):
-        images[i]=xshear(image,skew)
-    images_flat = np.reshape(images,(-1,rows*columns))
-    column_sums = compute_column_sum(images_flat,rows, columns)
-    X_result = column_sums[:,columnsXY]
-    probabilities = svm.predict_proba(X_result)
-    best_index = int(np.argmax(probabilities)/probabilities.shape[1])
-    z=np.reshape(images[best_index],(rows*columns))
-    return  z, X_result[best_index]
+# def best_skewed_character(X, svm, skewRange, rows, columns,columnsXY):  
+#     '''
+#     given an image and a classifier, run the image through a number
+#     of sheared versions and return the image with the highest
+#     probability of being correct
+#         
+#     Parameters
+#     --------------
+#     X numpy array shape (rows*columns)
+#     svm = classifier
+#     skewRange tuple containing skew values -1 to 1 to try 
+#     rows = number of rows in the image
+#     columns = number of columns in the image
+#     columnsXY is the column sums to return e.g. (9,17) returns the sum
+#         of the pixels in column 9 and the sum of the pixels in column 17 
+#     
+#     Returns:
+#     --------------- 
+#     numpy array flattened version of the best image. shape (rows*columns)
+#     numpy array 2D version of the best version shape (rows,columns)
+#     '''
+#     
+#          
+#     images = np.zeros((len(skewRange),rows, columns))    
+#     image = np.reshape(X,(rows,columns))    
+#     for i,skew in enumerate(skewRange):
+#         images[i]=xshear(image,skew)
+#     images_flat = np.reshape(images,(-1,rows*columns))
+#     column_sums = compute_column_sum(images_flat,rows, columns)
+#     X_result = column_sums[:,columnsXY]
+#     probabilities = svm.predict_proba(X_result)
+#     best_index = int(np.argmax(probabilities)/probabilities.shape[1])
+#     z=np.reshape(images[best_index],(rows*columns))
+#     return  z, X_result[best_index]
 
 #################  Miscellaneous Plot Routines ##############################
 
@@ -917,12 +913,12 @@ def montage(X, maxChars = 256, title=''):
     separator_size = 5
     count = min(maxChars,count)
 
-    nCol = int(np.ceil(np.sqrt(count)))
+    nCol = int(math.ceil(math.sqrt(count)))
     if nCol > 0:    
-        mRow = int(np.ceil( count/nCol))
-        M = np.zeros((mRow *( h+separator_size), nCol * (w+separator_size)))
+        nRow = int(math.ceil( count/nCol))
+        M = np.zeros((nRow * h + (nRow-1)*separator_size, nCol * w + (nCol-1) * separator_size))
         image_id = 0
-        for j in range(mRow):
+        for j in range(nRow):
             for k in range(nCol):
                 if image_id >= count: 
                     break
@@ -930,8 +926,32 @@ def montage(X, maxChars = 256, title=''):
                 M[sliceH:sliceH + h, sliceW:sliceW + w] = X[image_id,:,:]
                 image_id += 1
        
-        plt.imshow(M, cmap='coolwarm') 
+        plt.imshow(M, cmap='gray_r') 
         plt.title(title)
         plt.axis('off')     
         show_figures(plt, title)        
-         
+
+    
+def show_examples(X2D,y, title='Sample Characters'): 
+    ''' plot a character map of one each image for each label in y
+    parameters:
+        X2D: nparray: shape(num_samples,rows,cols)
+            images for each sample
+            
+        y:    shape(num_samples)
+            classifications labels for each X2d 
+        title: 
+            title to be placed on the plot
+    '''
+    yn = np.unique(y)
+    total_unique_labels= len(yn)
+    if total_unique_labels>0:
+
+        zz = np.zeros((total_unique_labels, X2D.shape[1], X2D.shape[2]))
+        for i,ys in enumerate(yn):
+            x = X2D[y==ys] 
+            zz[i,:] = x[0,:]
+      
+        montage(zz, title=title, maxChars=625)   
+    
+    
