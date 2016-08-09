@@ -16,34 +16,36 @@ from sklearn.pipeline import Pipeline
 from sklearn.grid_search import GridSearchCV
 from sklearn.svm import SVC
 
-y_train, X_train, y_test,  X_test, labels  = ocr_utils.load_E13B(chars_to_train = (48,51) , test_size=0.3, columns=(9,17), random_state=0) 
+if __name__ == '__main__':	
 
-pipe_svc = Pipeline([('scl', StandardScaler()),
-            ('clf', SVC(random_state=1))])
+    y_train, X_train, y_test,  X_test, labels  = ocr_utils.load_E13B(chars_to_train = (48,51) , test_size=0.3, columns=(9,17), random_state=0) 
 
-param_range = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
+    pipe_svc = Pipeline([('scl', StandardScaler()),
+                ('clf', SVC(random_state=1))])
 
-param_grid = [{'clf__C': param_range, 
-               'clf__kernel': ['linear']},
-                 {'clf__C': param_range, 
-                  'clf__gamma': param_range, 
-                  'clf__kernel': ['rbf']}]
+    param_range = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]
 
-gs = GridSearchCV(estimator=pipe_svc, 
-                  param_grid=param_grid, 
-                  scoring='accuracy', 
-                  cv=10,
-                  n_jobs=-1)
-gs = gs.fit(X_train, y_train)
+    param_grid = [{'clf__C': param_range, 
+                   'clf__kernel': ['linear']},
+                     {'clf__C': param_range, 
+                      'clf__gamma': param_range, 
+                      'clf__kernel': ['rbf']}]
 
-print('Support Vector Machine Grid Search best score: {}'.format(gs.best_score_))
-print('Support Vector Machine Grid Search best params: {}'.format(gs.best_params_))
+    gs = GridSearchCV(estimator=pipe_svc, 
+                      param_grid=param_grid, 
+                      scoring='accuracy', 
+                      cv=10,
+                      n_jobs=-1)
+    gs = gs.fit(X_train, y_train)
 
-clf = gs.best_estimator_
-clf.fit(X_train, y_train)
-print('Support Vector Machine Test accuracy: %.3f' % clf.score(X_test, y_test))
+    print('Support Vector Machine Grid Search best score: {}'.format(gs.best_score_))
+    print('Support Vector Machine Grid Search best params: {}'.format(gs.best_params_))
 
-print ('\n########################### No Errors ####################################')
+    clf = gs.best_estimator_
+    clf.fit(X_train, y_train)
+    print('Support Vector Machine Test accuracy: %.3f' % clf.score(X_test, y_test))
+
+    print ('\n########################### No Errors ####################################')
 
 
 
