@@ -312,9 +312,12 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
         test_accuracy += result[0]
         error_images = np.append(error_images, result[1][:,:,:,0][result[3]==False],axis=0)
         m += 1
-                         
-    print ("test accuracy {} for font: {}".format(test_accuracy/m, input_filters_dict['font']),flush=True)       
-    ocr_utils.montage(error_images,title='TensorFlow {} Error Images'.format(input_filters_dict['font']))
+    try:        
+        print ("test accuracy {} for font: {}".format(test_accuracy/m, input_filters_dict['font']),flush=True)       
+        ocr_utils.montage(error_images,title='TensorFlow {} Error Images'.format(input_filters_dict['font']))  
+    except:                            
+        print ("test accuracy {}".format(test_accuracy/m),flush=True)       
+        ocr_utils.montage(error_images,title='TensorFlow Error Images')    
     
     tf.reset_default_graph() # only necessary when iterating through fonts
     sess.close()

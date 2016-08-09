@@ -57,8 +57,10 @@ plt.ylim([0, 1.2])
 plt.xlabel('p(i=1)')
 plt.ylabel('Impurity Index')
 plt.tight_layout()
+title='impurity'
+plt.title(title)
 
-ocr_utils.show_figures(plt, title='impurity')
+ocr_utils.show_figures(plt,title=title)
 
 sc = StandardScaler()
 sc.fit(X_train)
