@@ -408,7 +408,7 @@ def read_data(fileName="fonts.zip",
     5) construct training and test set TruthedCharacters classes and return them    
     '''
     engine_type = engine_type.lower()
-
+    print (program_name())
     print('\nparameter: input_filters_dict\n\t{}'.format(input_filters_dict))
     print('parameter: output_feature_list\n\t{}'.format(output_feature_list))    
 
@@ -684,6 +684,10 @@ def compute_column_sum(npx,h,w):
 #################  Miscellaneous Plot Routines ##############################
 
 num_fig = 0 # used to give each saved plot a unique name
+def program_name():
+    pg = sys.argv[0]
+    pg2 = os.path.split(pg)
+    return  os.path.splitext(pg2[1])[0]
 
 def show_figures(plt, title="untitled"):
     '''
@@ -717,10 +721,7 @@ def show_figures(plt, title="untitled"):
             os.mkdir(plot_dir)
         except:
             pass
-        pg = sys.argv[0]
-        pg2 = os.path.split(pg)
-        pg3 = os.path.splitext(pg2[1])[0]
-        save_file_name= '{}/{}_{}_{}.png'.format(plot_dir, pg3, num_fig,  title)
+        save_file_name= '{}/{}_{}_{}.png'.format(plot_dir, program_name(), num_fig,  title)
         plt.savefig(save_file_name, dpi=300)        
         plt.clf() # savefig does not clear the figure like show does
         plt.cla()
