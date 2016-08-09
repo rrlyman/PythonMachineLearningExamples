@@ -39,10 +39,10 @@ ds = ocr_utils.read_data(input_filters_dict=input_filters_dict,
                             output_feature_list=output_feature_list, 
                             test_size=.2,
                             random_state=0)
-   
-y_train = ds.train.features[0]
-X_train_image = ds.train.features[1]
-X_train = ds.train.features[2]
+windows_limit = 5000 # uses too much memory for my 32 bit windows computer so limit size of sample   
+y_train = ds.train.features[0][:windows_limit]
+X_train_image = ds.train.features[1][:windows_limit]
+X_train = ds.train.features[2][:windows_limit]
 
 y_test = ds.test.features[0]
 X_test_image = ds.test.features[1]
