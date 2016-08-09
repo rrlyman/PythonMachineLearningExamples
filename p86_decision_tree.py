@@ -98,17 +98,6 @@ ocr_utils.plot_decision_regions(X=X_combined,
                                          title='random_forest')
 
 
-from sklearn.neighbors import KNeighborsClassifier
-
-knn = KNeighborsClassifier(n_neighbors=5, p=2, metric='minkowski')
-knn.fit(X_train_std, y_train)
-
-ocr_utils.plot_decision_regions(X=X_combined_std, 
-                      y=y_combined, 
-                      classifier=knn, 
-                      labels=labels,                      
-                      test_idx=range(len(X_test_std),len(X_combined_std)),
-                      title='k_nearest_neighbors')
 
 
 

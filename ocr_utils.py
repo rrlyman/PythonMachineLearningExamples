@@ -7,7 +7,7 @@ Utility programs for accessing the database of character images.
 Contains database access functions:
     load_E13B: special purpose function to return computed column Sums from E13B font
     read_data: general purpose function for returning a list of features from
-        the databasea
+        the database
     get_list: returns a list of the types of items in the database
 
 Miscellaneous Plot Functions:
@@ -101,7 +101,7 @@ def read_file(pathName, input_filters_dict, random_state=None):
     assert df.size >0
     return  df.sample(frac=1, random_state=random_state)
 
-def get_list(pathName="fonts.zip",columns=()): 
+def get_list(pathName="fonts.zip",input_filters_dict={}): 
     '''
     Read the entire database of fonts to find out what unique entries are 
     available.
@@ -109,7 +109,10 @@ def get_list(pathName="fonts.zip",columns=()):
     Parameters
     ---------------
         pathName : the path of the zip file containing the database of characters
-        columns : the column names to be processed
+        input_filters_dict : a dictionary containing columns in the .csv file to
+            be extracted.  keys = column heading, values = value to be 
+            allowed in that column.  Returns an entire column if a key is not
+            provided for it.
         
     Returns
     --------------
@@ -121,33 +124,26 @@ def get_list(pathName="fonts.zip",columns=()):
     print(ocr_utils.get_list(columns=('font','fontVariant')))    
 
     '''
-    if isinstance(columns, str): 
-        columns = (columns,)
+    # speed up list if only the font list is needed
+    try:
+        if (len(input_filters_dict)==1) and (len(input_filters_dict['font'])==0):
+            with ZipFile(pathName, 'r') as myzip:
+                y = sorted(myzip.namelist())
+            for i,l in enumerate(y):
+                y[i] = [l.replace('.csv','')]
+            return y
+    except:
+        pass
     
-    # speed up if only a font list is required
-    if columns == ('font',):    
-        with ZipFile(pathName, 'r') as myzip:
-            y = sorted(myzip.namelist())
-        for i,l in enumerate(y):
-            y[i] = [l.replace('.csv','')]
-            
-    else:
-        df = read_file(pathName,()) 
-        if len(columns)==0:
-            # do not include the massive image data
-            df = df.loc[:,:'r0c0']                            
-        else:
-            try:
-                df=df.loc[:,columns]  
-            except:
-                raise ValueError('Could not find columns {} in the file {}'.format(columns,pathName))      
-         
-        df= df.drop_duplicates()
-        y = sorted(np.array(df).tolist())
-
+    df = read_file(pathName,input_filters_dict)      
+    df = df.loc[:,:'r0c0']                            
+    df = apply_column_filters(df, input_filters_dict )  
+    keys=list(input_filters_dict.keys())
+    df = df[keys]
+    df= df.drop_duplicates()
+    y = np.array(df).tolist()
     return y
     
-
        
 class TruthedCharacters(object):
     """TrainedImages database.
@@ -155,8 +151,6 @@ class TruthedCharacters(object):
 
     """
     def __init__(self,  features, output_feature_list,h,w):
-        """Construct a TruthedImages class
-        """
 
         self._num_examples = features[0].shape[0]
         self._nRows = h
@@ -261,6 +255,31 @@ class TruthedCharacters(object):
                     s= '{}'.format(ftr[k,0]).ljust(20)
                     print(s[:10],end=' ')
             print('  ...')  
+            
+def apply_column_filters(df, input_filters_dict ):
+    ''' apply the column filters to the incoming data
+    
+    parameters:
+         input_filters_dict: filters to be applied to dataframe
+    
+    return:
+        filtered datafram
+    '''
+    for key,value in input_filters_dict.items():
+        if isinstance(value, str): 
+            value = (value,) 
+        if hasattr(value, '__iter__')==False:
+            value = (value,) 
+        if len(value) > 0:
+            criterion = df[key].map(lambda x: x in value)
+            df = df[criterion]  
+        print (key,value)
+        try:
+            delivered = sorted(df.loc[:,key].unique())
+        except:
+            raise ValueError('Could not find column {} in dataframe columns {}'.format(key, df.columns))            
+        print("\t{}(s) : {}".format(key, delivered))
+    return df
             
 def read_data(fileName="fonts.zip", 
               input_filters_dict={}, 
@@ -395,27 +414,15 @@ def read_data(fileName="fonts.zip",
 
     df = read_file(fileName, input_filters_dict,random_state=random_state)
     
-    # gather a list of columns, omit the image
     available_columns = []
     for key in df.columns:
-        if key=='r0c0':
+        if key=='r0c0':  #omit the image
             break;
         available_columns.append(key)
 
     print('input filters available: \n\t{}:'.format(available_columns))
-      
-    # apply the column filters to the incoming data
-    for key,value in input_filters_dict.items():
-        if isinstance(value, str): 
-            value = (value,) 
-        if hasattr(value, '__iter__')==False:
-            value = (value,) 
-        criterion = df[key].map(lambda x: x in value)
-        df = df[criterion]  
-        print (key,value)
-
-        delivered = sorted(df.loc[:,key].unique())
-        print("\t{}(s) : {}".format(key, delivered))
+    
+    df = apply_column_filters(df, input_filters_dict )
          
     h=int((df.iloc[0])['h'])  # get height and width of the image
     w=int((df.iloc[0])['w'])  # assumes that h and w are the same for all rows
@@ -426,7 +433,12 @@ def read_data(fileName="fonts.zip",
     
     if len(output_feature_list)==0:
         output_feature_list = available_columns + additional_features
-            
+
+    nCount = df.shape[0]       
+    nTestCount = math.floor(nCount*test_size)
+    nEvaluationCount = math.floor(nCount*evaluation_size)
+    nTrainCount = nCount - nTestCount - nEvaluationCount
+                
     # construct features, one_hots, computed features etc
  
     outvars = [] 
@@ -453,15 +465,27 @@ def read_data(fileName="fonts.zip",
             feature_name.append(colName)                                  
             
         elif colName=='m_label_one_hot':  
-            t1 = np.array(pd.get_dummies(df['m_label']), dtype=np.int8)  
+            try:
+                t1 = np.array(pd.get_dummies(df['m_label']) , dtype=np.uint16)
+            except:
+                t1 = np.zeros((df.shape[0]))               
+                raise ValueError('Memory error because the number of one-hot m_labels is too large')
             feature_name.append(colName)                     
             
-        elif colName=='font_one_hot':  
-            t1 = np.array(pd.get_dummies(df['font']) , dtype=np.int8)
+        elif colName=='font_one_hot': 
+            try: 
+                t1 = np.array(pd.get_dummies(df['font']) , dtype=np.int8)
+            except:
+                t1 = np.zeros((df.shape[0]))
+                raise ValueError('Memory error because the number of one-hot fonts is too large')             
             feature_name.append(colName) 
             
         elif colName=='fontVariant_one_hot':  
-            t1 = np.array(pd.get_dummies(df['fontVariant']) , dtype=np.int8)  
+            try:
+                t1 = np.array(pd.get_dummies(df['fontVariant']) , dtype=np.uint16) 
+            except:
+                t1 = np.zeros((df.shape[0]))
+                raise ValueError('Memory error because the number of one-hot fontVariants is too large') 
             feature_name.append(colName)    
                                      
         elif colName.find('column_sum')==0:
@@ -505,12 +529,7 @@ def read_data(fileName="fonts.zip",
         if engine_type=='theano' and colName=='image':
             t1=np.reshape(t1,(-1,1,h,w))
             
-        outvars.append(t1)
-                                                      
-    nCount = df.shape[0]       
-    nTestCount = math.floor(nCount*test_size)
-    nEvaluationCount = math.floor(nCount*evaluation_size)
-    nTrainCount = nCount - nTestCount - nEvaluationCount
+        outvars.append(t1)                                             
 
     outvars_train =[]       
     outvars_test = [] 
@@ -639,39 +658,6 @@ def load_E13B(chars_to_train=(48,49) , columns=(9,17), nChars=None, test_size=0,
     labels= ['column {} sum'.format(columns[i]) for i in range(len(columns))]
     return ds.train.features[0][:nChars],  ds.train.features[1][:nChars], ds.test.features[0][:nChars], ds.test.features[1][:nChars],  labels
 
-import skimage.transform as tf
-
-def xshear(X,skew):
-    ''' 
-    compute a sheared image given an original image and a skew -1 to 1
-        
-    Parameters
-    -----------------------
-    X is a 2 dimensional numpy array of shape (row, columns)
-    
-    skew is an amount to shear the image = -1 to 1
-    
-    Returns
-    -----------------------
-    sheared image of the same shape as the original image
-    '''
-    
-    rows = X.shape[0]
-    cols = X.shape[1]    
-    nCols = skew*cols
-    newCols = cols-abs(nCols)    
-    scaleX = newCols/cols  
-    ratioY = nCols/rows
-
-    if nCols<0:
-        xOffset = -nCols
-    else:
-        xOffset = 0         
-    matrix =  np.array( [[scaleX, ratioY, xOffset] ,[0, 1, 0] ,[0, 0, 1 ]])
-                                         
-    tp=tf.ProjectiveTransform(matrix=matrix) 
-    f = tf.warp(X, tp)         
-    return f
 
 def compute_column_sum(npx,h,w):
     '''
@@ -694,40 +680,6 @@ def compute_column_sum(npx,h,w):
     npx = np.reshape(npx,(npx.shape[0],h,w))
     return np.sum(npx,axis=1) # sum of rows in each column    
 
-# def best_skewed_character(X, svm, skewRange, rows, columns,columnsXY):  
-#     '''
-#     given an image and a classifier, run the image through a number
-#     of sheared versions and return the image with the highest
-#     probability of being correct
-#         
-#     Parameters
-#     --------------
-#     X numpy array shape (rows*columns)
-#     svm = classifier
-#     skewRange tuple containing skew values -1 to 1 to try 
-#     rows = number of rows in the image
-#     columns = number of columns in the image
-#     columnsXY is the column sums to return e.g. (9,17) returns the sum
-#         of the pixels in column 9 and the sum of the pixels in column 17 
-#     
-#     Returns:
-#     --------------- 
-#     numpy array flattened version of the best image. shape (rows*columns)
-#     numpy array 2D version of the best version shape (rows,columns)
-#     '''
-#     
-#          
-#     images = np.zeros((len(skewRange),rows, columns))    
-#     image = np.reshape(X,(rows,columns))    
-#     for i,skew in enumerate(skewRange):
-#         images[i]=xshear(image,skew)
-#     images_flat = np.reshape(images,(-1,rows*columns))
-#     column_sums = compute_column_sum(images_flat,rows, columns)
-#     X_result = column_sums[:,columnsXY]
-#     probabilities = svm.predict_proba(X_result)
-#     best_index = int(np.argmax(probabilities)/probabilities.shape[1])
-#     z=np.reshape(images[best_index],(rows*columns))
-#     return  z, X_result[best_index]
 
 #################  Miscellaneous Plot Routines ##############################
 
@@ -768,10 +720,6 @@ def show_figures(plt, title="untitled"):
         pg = sys.argv[0]
         pg2 = os.path.split(pg)
         pg3 = os.path.splitext(pg2[1])[0]
-        # example program name = 1_Simple_E13B_Display
-        # num_fig = 0
-        # plot title = E13B sum of columns
-        # saved file name = ./plots/1_Simple_E13B_Display_0_E13B sum of columns
         save_file_name= '{}/{}_{}_{}.png'.format(plot_dir, pg3, num_fig,  title)
         plt.savefig(save_file_name, dpi=300)        
         plt.clf() # savefig does not clear the figure like show does
@@ -897,7 +845,9 @@ def plot_decision_regions(X=None, y=None, classifier=None, resolution = .005, te
     
 
 def montage(X, maxChars = 256, title=''):  
-    ''' montage displays a square matrix of characters
+    ''' 
+    montage displays a square matrix of characters
+    
     ----------------------------------
     arguments:
         X is an np.array of character images of shape (:,h,w)
@@ -933,7 +883,9 @@ def montage(X, maxChars = 256, title=''):
 
     
 def show_examples(X2D,y, title='Sample Characters'): 
-    ''' plot a character map of one each image for each label in y
+    ''' 
+    plot a character map of one each image for each label in y
+    
     parameters:
         X2D: nparray: shape(num_samples,rows,cols)
             images for each sample
@@ -952,6 +904,6 @@ def show_examples(X2D,y, title='Sample Characters'):
             x = X2D[y==ys] 
             zz[i,:] = x[0,:]
       
-        montage(zz, title=title, maxChars=625)   
+        montage(zz, title=title, maxChars=1024)   
     
     

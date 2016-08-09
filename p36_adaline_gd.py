@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 #        horizontal columns 9 and 17
   
 
-ascii_characters_to_train=(48,51)
+ascii_characters_to_train=(48,49)
 columnsXY = (9,17)       
 nchars=500
 y, X, y_test,  X_test, labels  = ocr_utils.load_E13B(chars_to_train = ascii_characters_to_train , columns=columnsXY,nChars=120) 
@@ -103,10 +103,34 @@ class AdalineGD(object):
         """Return class label after unit step"""
         
         return np.where(self.activation(X) >= 0.0, 1, -1)
-    
-ada1 = AdalineGD(n_iter=15, eta=0.01).fit(X, y)
-ada2 = AdalineGD(n_iter=15, eta=0.0001).fit(X, y)
- 
+title = 'Gradient Descent Learning rate 0.01'
+
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 4))
+ada1 = AdalineGD(n_iter=10, eta=0.01).fit(X, y)
+ax[0].plot(range(1, len(ada1.cost_) + 1), np.log10(ada1.cost_), marker='o')
+ax[0].set_xlabel('Epochs')
+ax[0].set_ylabel('log(Sum-squared-error)')
+ax[0].set_title('Adaline - Learning rate 0.01')
+ada2 = AdalineGD(n_iter=10, eta=0.0001).fit(X, y)
+
+ax[1].plot(range(1, len(ada2.cost_) + 1), ada2.cost_, marker='o')
+ax[1].set_xlabel('Epochs')
+ax[1].set_ylabel('Sum-squared-error')
+ax[1].set_title('Adaline - Learning rate 0.0001')
+ocr_utils.show_figures(plt, title)
+
+
+
+# 
+# plt.plot(range(1,len(ada1.cost_)+1), np.log10(ada1.cost_), marker='o',label = title)
+# plt.title(title)
+# ocr_utils.show_figures(plt, title)
+# 
+# ada2 = AdalineGD(n_iter=15, eta=0.0001).fit(X, y)
+# title = 'Gradient Descent Learning rate 0.0001'
+# plt.plot(range(1,len(ada2.cost_)+1), np.log10(ada2.cost_) ,marker='x',label = title)
+# plt.title(title)
+# ocr_utils.show_figures(plt, title)
 # standardize features
 X_std = np.copy(X)
 X_std[:,0] = (X[:,0] - X[:,0].mean()) / X[:,0].std()
@@ -115,23 +139,16 @@ X_std[:,1] = (X[:,1] - X[:,1].mean()) / X[:,1].std()
 ada = AdalineGD(n_iter=15, eta=0.01)
 ada.fit(X_std, y)
 ocr_utils.plot_decision_regions(X=X_std, 
-                           y=y,
-                           classifier=ada1, 
-                           labels= labels,
-                           title='Adaline - Gradient Descent Learning rate 0.01')
-ocr_utils.plot_decision_regions(X=X_std, 
-                           y=y,
-                           classifier=ada2, 
-                           labels= labels,
-                           title='Adaline - Gradient Descent Learning rate 0.0001')
-ocr_utils.plot_decision_regions(X=X_std, 
-                           y=y,
-                           classifier=ada, 
-                           labels= labels,
-                           title='Adaline - Gradient Descent standardized rate 0.01')
+                            y=y,
+                            classifier=ada, 
+                            labels= labels,
+                            title='Adaline - Gradient Descent standardized rate 0.01')
 
-plt.plot(range(1,len(ada1.cost_)+1), np.log10(ada1.cost_), marker='o',label = 'Learning rate 0.01')
-plt.plot(range(1,len(ada2.cost_)+1), np.log10(ada2.cost_) ,marker='x',label = 'Learning rate 0.0001')
+title = 'Standardized Gradient Descent Learning rate 0.01'
+plt.plot(range(1,len(ada2.cost_)+1), np.log10(ada2.cost_) ,marker='x',label = title)
+plt.title(title)
+ocr_utils.show_figures(plt, title)
+
 plt.plot(range(1,len(ada.cost_)+1), np.log10(ada.cost_), marker='v', label='standardized rate 0.01')
 plt.xlabel('Epochs')
 plt.ylabel('log(Sum-squared-error)')

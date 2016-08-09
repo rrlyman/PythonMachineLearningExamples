@@ -312,9 +312,9 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
         test_accuracy += result[0]
         error_images = np.append(error_images, result[1][:,:,:,0][result[3]==False],axis=0)
         m += 1
-    if error_images.shape[0]>0:                           
-        print ("test accuracy {}".format(test_accuracy/m),flush=True)       
-        ocr_utils.montage(error_images,title='TensorFlow {} Error Images'.format(input_filters_dict['font']))
+                         
+    print ("test accuracy {} for font: {}".format(test_accuracy/m, input_filters_dict['font']),flush=True)       
+    ocr_utils.montage(error_images,title='TensorFlow {} Error Images'.format(input_filters_dict['font']))
     
     tf.reset_default_graph() # only necessary when iterating through fonts
     sess.close()
@@ -347,16 +347,17 @@ if True:
     
     # output only the character label and the image
     # output_feature_list = ['m_label_one_hot','image'] 
-    
-    input_filters_dict = {'font': ('E13B',)}
+
+    # train the digits 0-9 for all fonts
+    input_filters_dict = {'m_label': range(48,58)}
     output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']    
-    train_a_font(input_filters_dict,  output_feature_list, nEpochs = 1000)    
+    train_a_font(input_filters_dict,  output_feature_list, nEpochs = 5000)    
     
 else:
     # loop through all the fonts and train individually
 
     # pick up the entire list of fonts and font variants. Train each one.
-    lst = ocr_utils.get_list(columns=('font'))
+    lst = ocr_utils.get_list(input_filters_dict={'font': ()})      
     
     import pprint as pprint
     pp = pprint.PrettyPrinter(indent=4)
@@ -367,7 +368,7 @@ else:
     # Change nEpochs to 5000 for better results
     for l in lst:
         input_filters_dict= {'font': (l[0],)}       
-        train_a_font(input_filters_dict,output_feature_list, nEpochs = 100) 
+        train_a_font(input_filters_dict,output_feature_list, nEpochs = 1000) 
     
     
 print ('\n########################### No Errors ####################################')
