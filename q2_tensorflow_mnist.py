@@ -324,7 +324,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     sess.close()
 
     
-if False:
+if True:
     # single font train
     
     # esamples
