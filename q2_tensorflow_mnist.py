@@ -30,6 +30,7 @@ import ocr_utils
 import datetime
 from collections import namedtuple
 import numpy as np
+import pandas as pd
  
    
 def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
@@ -323,7 +324,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     sess.close()
 
     
-if True:
+if False:
     # single font train
     
     # esamples
@@ -360,18 +361,18 @@ else:
     # loop through all the fonts and train individually
 
     # pick up the entire list of fonts and font variants. Train each one.
-    lst = ocr_utils.get_list(input_filters_dict={'font': ()})      
+    df1 = ocr_utils.get_list(input_filters_dict={'font': ()})      
     
     import pprint as pprint
     pp = pprint.PrettyPrinter(indent=4)
-    pp.pprint(lst)
+    pp.pprint(df1)
    
     output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']
     
     # Change nEpochs to 5000 for better results
-    for l in lst:
+    for l in df1:
         input_filters_dict= {'font': (l[0],)}       
-        train_a_font(input_filters_dict,output_feature_list, nEpochs = 1000) 
+        train_a_font(input_filters_dict,output_feature_list, nEpochs = 500) 
     
     
 print ('\n########################### No Errors ####################################')

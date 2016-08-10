@@ -116,8 +116,7 @@ def get_list(pathName="fonts.zip",input_filters_dict={}):
         
     Returns
     --------------
-        a list of all the all the unique values available in the 
-        dataset for the given columns
+        a dataframe of all the all the unique lines in the dataset
         
     Example:
     --------------    
@@ -141,8 +140,7 @@ def get_list(pathName="fonts.zip",input_filters_dict={}):
     keys=list(input_filters_dict.keys())
     df = df[keys]
     df= df.drop_duplicates()
-    y = np.array(df).tolist()
-    return y
+    return df
     
        
 class TruthedCharacters(object):
