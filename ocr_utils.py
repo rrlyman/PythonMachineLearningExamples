@@ -116,14 +116,15 @@ def get_list(pathName="fonts.zip",input_filters_dict={}):
         
     Returns
     --------------
-        a dataframe of all the all the unique lines in the dataset
+        a dataframe of all the all the unique lines in the dataset.
         
     Example:
     --------------    
     print(ocr_utils.get_list(columns=('font','fontVariant')))    
 
     '''
-    # speed up list if only the font list is needed
+    
+    # speed up list if only the font list is needed 
     try:
         if (len(input_filters_dict)==1) and (len(input_filters_dict['font'])==0):
             with ZipFile(pathName, 'r') as myzip:
