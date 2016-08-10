@@ -49,7 +49,7 @@ y,X = ds.train.features
 
 # change to a 2D shape 
 X=np.reshape(X,(X.shape[0],ds.train.num_rows, ds.train.num_columns))
-ocr_utils.montage(X,title='E13B Characters {}'.format(legend))
+ocr_utils.montage(X,title='some E13B Characters')
 
 
 
