@@ -79,6 +79,7 @@ def read_file(pathName, input_filters_dict, random_state=None):
     if os.path.exists(pathName)==False:
         print('fonts.zip does not exist!  Downloading it from the web', flush=True)            
         downloadFile('http://lyman.house/download/fonts.zip')
+        #downloadFile('http://lyman.house/download/fonts_chinese.zip')        
 
     try :
         rd_font = input_filters_dict['font']
