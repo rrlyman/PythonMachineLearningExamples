@@ -1,5 +1,4 @@
 # PythonMachineLearingExamples
-Example Code from the book Python Machine Learning, using a database of character images.
 
 These are Python programs mostly taken from the book "Python Machine Learning"
 by Sebastian Raschka
