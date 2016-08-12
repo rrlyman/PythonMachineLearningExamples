@@ -6,50 +6,47 @@ Created on Jul 25, 2016
 @author: richard
 '''
 import ocr_utils
-import numpy as np
-import pandas as pd
-
-# # read and show the character images for each font variant
-# # output only the character label and the image
-# fl = ['m_label','image'] 
-# fd = {'font': 'AGENCY', 'fontVariant': 'AGENCY FB', 'm_label':(73,)}
-# ds = ocr_utils.read_data(input_filters_dict=fd, output_feature_list=fl, dtype=np.int32)   
-# y,X = ds.train.features
-# X2D = np.reshape(X, (X.shape[0], ds.train.num_rows, ds.train.num_columns ))
-# title = '{}: {}'.format('AGENCY','AGENCY Is')
-# ocr_utils.montage(X2D, title=title)
+import numpy as np 
         
 df1 = ocr_utils.get_list(input_filters_dict = {'font':()})
-
-print('\n\nAvailable fonts:')
-import pprint
-pp = pprint.PrettyPrinter()
-pp.pprint(df1)
-# 
-# for font in lst:
-#     input_filters_dict = {'font':font, 'm_label': range(100)}    
-#     ds = ocr_utils.read_data(input_filters_dict=input_filters_dict)
-# 
-#     for i in range(ds.train.num_features):
-#         names = ds.train.feature_names[i]    
-#         lengths=len(np.unique(ds.train.features[i]))
-#         shapes=ds.train.features[i].shape
-#         print("\n\nfeature name = {}, \n\tnumber of unique values = {}, feature shape = {}".format(names, lengths, shapes))
-
+unique_fonts=[]
+unique_fontVariants=[]
+unique_m_labels=[]
+unique_strengths=[]
+unique_italics=[]
+unique_orientations=[]
 
 #############################################################################
 # read and show the character images for each font variant
 # output only the character label and the image
-fl = ['m_label','image'] 
+
 for font in df1:    
-    df2 = ocr_utils.get_list(input_filters_dict={'font':font, 'fontVariant':()})
-    for font,fontVariant in zip(df2['font'],df2['fontVariant']):
+    df2 = ocr_utils.get_list(input_filters_dict = {'font':font,'fontVariant':(), 'm_label':(),'strength':(),'italic':(),'orientation':()})
+    unique_fonts = np.unique( np.append(unique_fonts, df2['font']))
+    u1= np.unique(df2['fontVariant'])    
+    unique_fontVariants = np.unique(np.append(unique_fontVariants, u1))    
+    u2 = np.unique(df2['m_label'])
+    unique_m_labels = np.unique(np.append(unique_m_labels,u2))   
+    u3 = np.unique(df2['strength'])
+    unique_strengths =  np.unique(np.append(unique_strengths,u3))
+    u4 = np.unique(df2['italic'])
+    unique_italics = np.unique(np.append(unique_italics,u4))
+    u5 =np.unique( df2['orientation'])
+    unique_orientations = np.unique(np.append(unique_orientations,u5))
+    print ('\n{}, fontVariants={}, labels = {}, strengths = {}, italics = {}, orientations = {}\n'.format(font[0], len(u1), 
+                                                                                                               len(u2), len(u3),                                                                                                              len(u4), len(u5))) 
+    for fontVariant in u1:
         fd = {'font': font, 'fontVariant': fontVariant}
-        ds = ocr_utils.read_data(input_filters_dict=fd, output_feature_list=fl, dtype=np.int32)   
+        ds = ocr_utils.read_data(input_filters_dict=fd, output_feature_list=['m_label','image'] , dtype=np.int32)   
         y,X = ds.train.features
         X2D = np.reshape(X, (X.shape[0], ds.train.num_rows, ds.train.num_columns ))
         title = '{}: {}'.format(font,fontVariant)
         ocr_utils.show_examples(X2D, y, title=title)
+       
+print ('unique fonts={}, fontVariants={}, labels = {}, strengths = {}, italics = {}, orientations = {}'.format(len(unique_fonts), len(unique_fontVariants), 
+                                                                                                               len(unique_m_labels), len(unique_strengths), 
+                                                                                                               len(unique_italics), len(unique_orientations)))
+    
     
 print ('\n########################### No Errors ####################################')
     

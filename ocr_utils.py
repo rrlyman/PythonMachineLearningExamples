@@ -22,6 +22,17 @@ Miscellaneous Plot Functions:
 
 @author: richard
 '''
+from django.template.defaultfilters import title
+
+######################################################
+show_plot = False   #set True to show plot on screen, set False to save to file
+#####################################################
+
+##############################################################################
+default_zip_file = "fonts.zip"   #small data set
+#default_zip_file = 'fonts_all.zip' #for the big data set
+##############################################################################
+
 import numpy as np
 import pandas as pd
 import math
@@ -32,11 +43,6 @@ import sys
 import os
 
 
-######################################################
-show_plot = False   #set True to show plot on screen, set False to save to file
-#####################################################
-
-    
 def report(blocknr, blocksize, size):
     current = blocknr*blocksize
     print("{0:.2f}%".format(100.0*current/size),end='\r')
@@ -77,8 +83,8 @@ def read_file(pathName, input_filters_dict, random_state=None):
      '''    
 
     if os.path.exists(pathName)==False:
-        print('fonts.zip does not exist!  Downloading it from the web', flush=True)            
-        downloadFile('http://lyman.house/download/fonts.zip')
+        print('{} does not exist!  Downloading it from the web'.format(default_zip_file), flush=True)            
+        downloadFile('http://lyman.house/download/{}'.format(default_zip_file))
         #downloadFile('http://lyman.house/download/fonts_chinese.zip')        
 
     try :
@@ -88,21 +94,35 @@ def read_file(pathName, input_filters_dict, random_state=None):
     except:
         rd_font = ()   
     
+#     with ZipFile(pathName, 'r') as myzip:
+#         if len(rd_font) == 0:
+#             names = myzip.namelist()            
+#             print ('\nreading all files...please wait')
+#             df = pd.concat(apply_column_filters(pd.read_csv(myzip.open(fname,'r')), input_filters_dict) for fname in names)     
+#         else:
+#             try:
+#                 df = pd.concat(apply_column_filters(pd.read_csv(myzip.open(font+".csv",'r')), input_filters_dict) for font in rd_font)   
+#             except:
+#                 raise ValueError('Could not find font file {} in the zip file'.format(rd_font))
+#         myzip.close()
+#     assert df.size >0
+    
     with ZipFile(pathName, 'r') as myzip:
         if len(rd_font) == 0:
             names = myzip.namelist()            
             print ('\nreading all files...please wait')
-            df = pd.concat(pd.read_csv(myzip.open(fname,'r')) for fname in names)        
+            df = pd.concat(apply_column_filters(pd.read_csv(myzip.open(fname,'r')), input_filters_dict) for fname in names)     
         else:
             try:
-                df = pd.concat(pd.read_csv(myzip.open(font+".csv",'r'))for font in rd_font)   
+                df = pd.concat(apply_column_filters(pd.read_csv(myzip.open(font+".csv",'r')), input_filters_dict) for font in rd_font)   
             except:
                 raise ValueError('Could not find font file {} in the zip file'.format(rd_font))
         myzip.close()
     assert df.size >0
+        
     return  df.sample(frac=1, random_state=random_state)
 
-def get_list(pathName="fonts.zip",input_filters_dict={}): 
+def get_list(pathName=default_zip_file,input_filters_dict={}): 
     '''
     Read the entire database of fonts to find out what unique entries are 
     available.
@@ -137,8 +157,7 @@ def get_list(pathName="fonts.zip",input_filters_dict={}):
         pass
     
     df = read_file(pathName,input_filters_dict)      
-    df = df.loc[:,:'r0c0']                            
-    df = apply_column_filters(df, input_filters_dict )  
+    df = df.loc[:,:'r0c0']                              
     keys=list(input_filters_dict.keys())
     df = df[keys]
     df= df.drop_duplicates()
@@ -273,15 +292,9 @@ def apply_column_filters(df, input_filters_dict ):
         if len(value) > 0:
             criterion = df[key].map(lambda x: x in value)
             df = df[criterion]  
-        print (key,value)
-        try:
-            delivered = sorted(df.loc[:,key].unique())
-        except:
-            raise ValueError('Could not find column {} in dataframe columns {}'.format(key, df.columns))            
-        print("\t{}(s) : {}".format(key, delivered))
     return df
             
-def read_data(fileName="fonts.zip", 
+def read_data(fileName=default_zip_file, 
               input_filters_dict={}, 
               output_feature_list=[], 
               test_size=0.0, 
@@ -408,7 +421,7 @@ def read_data(fileName="fonts.zip",
     5) construct training and test set TruthedCharacters classes and return them    
     '''
     engine_type = engine_type.lower()
-    print (program_name())
+
     print('\nparameter: input_filters_dict\n\t{}'.format(input_filters_dict))
     print('parameter: output_feature_list\n\t{}'.format(output_feature_list))    
 
@@ -422,7 +435,7 @@ def read_data(fileName="fonts.zip",
 
     print('input filters available: \n\t{}:'.format(available_columns))
     
-    df = apply_column_filters(df, input_filters_dict )
+  
          
     h=int((df.iloc[0])['h'])  # get height and width of the image
     w=int((df.iloc[0])['w'])  # assumes that h and w are the same for all rows
@@ -721,7 +734,11 @@ def show_figures(plt, title="untitled"):
             os.mkdir(plot_dir)
         except:
             pass
-        save_file_name= '{}/{}_{}_{}.png'.format(plot_dir, program_name(), num_fig,  title)
+
+        #\/:*?"<>|
+        title_file = title.replace('/','_')
+        save_file_name= '{}/{}_{}_{}.png'.format(plot_dir, program_name(), num_fig,  title_file )
+        print ('plotting {}'.format(save_file_name))
         plt.savefig(save_file_name, dpi=300)        
         plt.clf() # savefig does not clear the figure like show does
         plt.cla()
