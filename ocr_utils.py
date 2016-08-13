@@ -22,7 +22,6 @@ Miscellaneous Plot Functions:
 
 @author: richard
 '''
-from django.template.defaultfilters import title
 
 ######################################################
 show_plot = False   #set True to show plot on screen, set False to save to file
