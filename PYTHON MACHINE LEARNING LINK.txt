@@ -1,5 +1,0 @@
-original code from  the book "Python Machine Learning" by Sebastian Raschka 
-can be found here: 
-
-https://github.com/rasbt/python-machine-learning-book
-
