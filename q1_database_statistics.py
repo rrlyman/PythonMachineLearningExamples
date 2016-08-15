@@ -40,7 +40,7 @@ for font in df1:
         ds = ocr_utils.read_data(input_filters_dict=fd, output_feature_list=['m_label','image'] , dtype=np.int32)   
         y,X = ds.train.features
         X2D = np.reshape(X, (X.shape[0], ds.train.num_rows, ds.train.num_columns ))
-        title = '{}-{}'.format(font[0],fontVariant[0])
+        title = '{}-{}'.format(font[0],fontVariant)
         ocr_utils.show_examples(X2D, y, title=title)
        
 print ('unique fonts={}, fontVariants={}, labels = {}, strengths = {}, italics = {}, orientations = {}'.format(len(unique_fonts), len(unique_fontVariants), 
