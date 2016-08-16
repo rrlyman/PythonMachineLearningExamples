@@ -68,7 +68,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     for i,nm in enumerate(output_feature_list):
         
-        # features[0], is the target, 'm_label_one_hot' 
+        # features[0], is always the target. For instance it may be m_label_one_hot 
         # the second features[1] is the 'image' that is passed to the convolution layers 
         # Any additional features bypass the convolution layers and go directly 
         # into the fully connected layer.  
@@ -225,14 +225,14 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     with tf.name_scope("xent") as scope:
         # 1e-8 added to eliminate the crash of training when taking log of 0
-        cross_entropy = -tf.reduce_sum(ph.m_label_one_hot*tf.log(y_conv+1e-8))
+        cross_entropy = -tf.reduce_sum(ph[0]*tf.log(y_conv+1e-8))
         ce_summ = tf.scalar_summary("cross entropy", cross_entropy)
             
     with tf.name_scope("train") as scope:
         train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
         
     with tf.name_scope("test") as scope:        
-        correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(ph.m_label_one_hot,1))
+        correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(ph[0],1))
     
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
         accuracy_summary = tf.scalar_summary("accuracy", accuracy)    
@@ -351,6 +351,9 @@ if True:
     
     # output only the character label and the image
     # output_feature_list = ['m_label_one_hot','image'] 
+    
+    #   identify the font given the input images
+    #output_feature_list = ['font_one_hot','image','italic','aspect_ratio','upper_case']   
 
     # train the digits 0-9 for all fonts
     input_filters_dict = {'m_label': range(48,58)}
