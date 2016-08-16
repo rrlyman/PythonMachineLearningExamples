@@ -91,7 +91,7 @@ ocr_utils.scatter_plot(X=X,
                   title='k-means cluster E13B sum of columns')
 
 from sklearn.cluster import KMeans
-km = KMeans(n_clusters=3,init='random',n_init=10,max_iter=300,tol=1e-04,random_state=0)
+km = KMeans(n_clusters=3,init='random',n_init=10,max_iter=300,tol=1e-04,random_state=0,n_jobs=-1)
 y_km = km.fit_predict(X)
 
 legend=[]
@@ -111,7 +111,7 @@ ocr_utils.scatter_plot(X=X,
                   axis_labels = ['column {} sum'.format(columnsXY[i]) for i in range(len(columnsXY))], 
                   title='column sums k means centroids')
 
-km = KMeans(n_clusters=3,n_init=10,max_iter=300,tol=1e-04,random_state=0)
+km = KMeans(n_clusters=3,n_init=10,max_iter=300,tol=1e-04,random_state=0,n_jobs=-1)
 y_km = km.fit_predict(X)
 
 legend=[]
@@ -163,7 +163,7 @@ X_image = ds.train.features[1][:n]
 
 distortions=[]
 for i in range(1,30):
-    km = KMeans(n_clusters=i,n_init=10,max_iter=300,tol=1e-04,random_state=0)
+    km = KMeans(n_clusters=i,n_init=10,max_iter=300,tol=1e-04,random_state=0,n_jobs=-1)
     y_km = km.fit_predict(X_image)
     distortions.append(km.inertia_)
     
@@ -175,7 +175,7 @@ plt.title(title)
 ocr_utils.show_figures(plt, title)
   
   
-km = KMeans(n_clusters=8,n_init=10,max_iter=300,tol=1e-04,random_state=0)
+km = KMeans(n_clusters=8,n_init=10,max_iter=300,tol=1e-04,random_state=0,n_jobs=-1)
 y_km = km.fit_predict(X_image)
         
 nClusters = km.cluster_centers_.shape[0]
