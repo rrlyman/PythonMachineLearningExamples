@@ -1,8 +1,5 @@
 '''
 Created on Jul 25, 2016
-
-
-
 @author: richard
 '''
 import ocr_utils
@@ -49,4 +46,3 @@ print ('unique fonts={}, fontVariants={}, labels = {}, strengths = {}, italics =
     
     
 print ('\n########################### No Errors ####################################')
-    
