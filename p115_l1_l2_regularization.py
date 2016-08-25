@@ -69,7 +69,7 @@ y_combined = np.hstack((y_train, y_test))
 
 from sklearn.linear_model import LogisticRegression
 
-lr = LogisticRegression(penalty='l1', C=0.1)
+lr = LogisticRegression(penalty='l1', C=0.1, random_state=0)
 lr.fit(X_train_std, y_train)
 print('Training accuracy-l1 regularization:', lr.score(X_train_std, y_train))
 print('Test accuracy-l1 regularization:', lr.score(X_test_std, y_test))
@@ -79,7 +79,7 @@ print('lr.coef_ L1 regularization')
 print('\t{}'.format(lr.coef_))
 
 
-lr = LogisticRegression(penalty='l2', C=0.1)
+lr = LogisticRegression(penalty='l2', C=0.1, random_state=0)
 lr.fit(X_train_std, y_train)
 print('Training accuracy-l2 regularization:', lr.score(X_train_std, y_train))
 print('Test accuracy-l2 regularization:', lr.score(X_test_std, y_test))

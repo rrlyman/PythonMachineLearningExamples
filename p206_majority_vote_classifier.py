@@ -48,7 +48,7 @@ from sklearn.externals import six
 from sklearn.base import clone
 from sklearn.pipeline import _name_estimators
 import numpy as np       
-import ocr_utils
+import ocr_utils 
 from sklearn.cross_validation import train_test_split
 from sklearn.cross_validation import cross_val_score
 from sklearn.linear_model import LogisticRegression
@@ -326,9 +326,9 @@ grid = GridSearchCV(estimator=mv_clf,
 grid.fit(X_train, y_train)
 
 for params, mean_score, scores in grid.grid_scores_:
-    print("%0.3f+/-%0.2f %r"
-            % (mean_score, scores.std() / 2, params))
-print('\nBest parameters: %s' % grid.best_params_)
-print('Best Accuracy: %.2f' % grid.best_score_)
+    print("%0.6f+/-%0.6f %r"
+            % (mean_score, scores.std() / 2, sorted(params.items())))
+print('\nBest parameters: %s' % sorted(grid.best_params_.items()))
+print('Best Accuracy: %.6f' % grid.best_score_)
 
 print ('\n########################### No Errors ####################################')

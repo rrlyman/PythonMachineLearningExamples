@@ -61,7 +61,7 @@ if __name__ == '__main__':
     gs = gs.fit(X_train, y_train)
 
     print('Support Vector Machine Grid Search best score: {}'.format(gs.best_score_))
-    print('Support Vector Machine Grid Search best params: {}'.format(gs.best_params_))
+    print('Support Vector Machine Grid Search best params: {}'.format(sorted(gs.best_params_.items())))
 
     clf = gs.best_estimator_
     clf.fit(X_train, y_train)

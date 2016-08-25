@@ -85,8 +85,7 @@ if __name__ == '__main__':
 
         gs = gs.fit(X_train, y_train)
         print('Support Vector Machine Grid Search best score: {}'.format(gs.best_score_))
-        print('Support Vector Machine Grid Search best params: {}\n'.format(gs.best_params_))
-
+        print('Support Vector Machine Grid Search best params: {}'.format(sorted(gs.best_params_.items())))
         from sklearn.tree import DecisionTreeClassifier
         gs = GridSearchCV(estimator=DecisionTreeClassifier(random_state=0), 
                                     param_grid=[{'max_depth': [1, 2, 3, 4, 5, 6, 7, None]}], 

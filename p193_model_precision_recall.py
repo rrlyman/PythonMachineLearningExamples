@@ -93,6 +93,5 @@ if __name__ == '__main__':
                                     n_jobs=-1)
     gs = gs.fit(X_train, y_train)
     print('\nGrid Search f1 scoring best score: {}'.format(gs.best_score_))
-    print('Grid Search f1 scoring best params: {}'.format(gs.best_params_))
-
+    print('Grid Search f1 scoring best params: {}'.format(sorted(gs.best_params_.items())))
     print ('\n########################### No Errors ####################################')
