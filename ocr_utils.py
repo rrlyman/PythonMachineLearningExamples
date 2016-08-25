@@ -92,19 +92,7 @@ def read_file(pathName, input_filters_dict, random_state=None):
             rd_font = (rd_font,)            
     except:
         rd_font = ()   
-    
-#     with ZipFile(pathName, 'r') as myzip:
-#         if len(rd_font) == 0:
-#             names = myzip.namelist()            
-#             print ('\nreading all files...please wait')
-#             df = pd.concat(apply_column_filters(pd.read_csv(myzip.open(fname,'r')), input_filters_dict) for fname in names)     
-#         else:
-#             try:
-#                 df = pd.concat(apply_column_filters(pd.read_csv(myzip.open(font+".csv",'r')), input_filters_dict) for font in rd_font)   
-#             except:
-#                 raise ValueError('Could not find font file {} in the zip file'.format(rd_font))
-#         myzip.close()
-#     assert df.size >0
+
     
     with ZipFile(pathName, 'r') as myzip:
         if len(rd_font) == 0:
@@ -168,21 +156,26 @@ class TruthedCharacters(object):
     Holds the training features and size information
 
     """
-    def __init__(self,  features, output_feature_list,h,w):
+    def __init__(self,  features, output_feature_list, one_hot_map, engine_type,h,w):
 
         self._num_examples = features[0].shape[0]
         self._nRows = h
         self._nCols = w
-        self._features = features
+        self._features = features                   # list of features
         self._epochs_completed = 0
         self._index_in_epoch = 0
-        self._feature_names = output_feature_list
+        self._feature_names = output_feature_list   # list of names of features
         self._num_features = len(features)
+        self._one_hot_map = one_hot_map             # list >0 for each feature that is one_hot
+        self._engine_type= engine_type        
         
         self._feature_width=[]
         for i in range(self._num_features ):
             try:
-                self._feature_width += [features[i].shape[1]]
+                if one_hot_map[i] == 0:
+                    self._feature_width += [features[i].shape[1]]
+                else:
+                    self._feature_width += [one_hot_map[i]]
             except:
                 self._feature_width += [1]             
 
@@ -194,10 +187,43 @@ class TruthedCharacters(object):
     @property
     def feature_width(self):
         return self._feature_width
+          # fixup for formats required by various engines   
+        # features that are straight from the .CSV file, without 
+        # modifications for one-hot or scaling fall here.
+        # tensorflow requires a shape (:,1), thus the reshaping
+        
+    def engine_conversion(self,t1,colName):
+        if self._engine_type=='tensorflow' and len(t1.shape)==1:       
+            t1=np.reshape(t1,(-1,1))
+            
+        if self._engine_type=='theano' and colName=='image':
+            t1=np.reshape(t1,(-1,1,self._nRows,self._nCols))
+        return t1
+    
+    def get_features(self, i, start, end):
+        '''
+        memory saving version of features[i][start:end]
+        '''
+        t1 = self._features[i][start:end]
+        n_hots = self._one_hot_map[i]
+
+        if n_hots==0:
+            rtn=self.engine_conversion(t1, self._feature_names[i])
+        else:
+            rtn= self.engine_conversion(np.eye(n_hots )[t1], self._feature_names[i])            
+        return rtn    
     
     @property
     def features(self):
-        return self._features
+        # wait until last moment to compute one_hots to save memory        
+        rtn = []
+        for t1, nm, n_hots in zip(self._features, self._feature_names,  self._one_hot_map):
+            if n_hots==0:
+                rtn.append(self.engine_conversion(t1, nm) )
+                #assert(np.all(rtn[-1]==t1))
+            else:
+                rtn.append( self.engine_conversion(np.eye(n_hots )[t1], nm)   )             
+        return rtn
     
     @property
     def feature_names(self):
@@ -244,7 +270,7 @@ class TruthedCharacters(object):
         end = self._index_in_epoch
         outs = []
         for i in range(self._num_features):
-            outs += [self._features[i][start:end]]
+            outs += [self.get_features(i,start,end)]
          
         return outs
         
@@ -274,6 +300,8 @@ class TruthedCharacters(object):
                     print(s[:10],end=' ')
             print('  ...')  
             
+ 
+                
 def apply_column_filters(df, input_filters_dict ):
     ''' apply the column filters to the incoming data
     
@@ -292,6 +320,21 @@ def apply_column_filters(df, input_filters_dict ):
             criterion = df[key].map(lambda x: x in value)
             df = df[criterion]  
     return df
+
+def convert_to_unique(t1):
+    ''' convert unique values in an numpy.array into
+    indices into the unique array
+    arguments:
+    t1 numpy scalar array
+    return
+    t1 with each value changed to an index 0 to number of unique
+    values in t1-1
+    '''
+    t2 = t1
+    unique = np.unique(t1)
+    for i,u in enumerate(unique):
+        t2[t1==u]=i
+    return t2
             
 def read_data(fileName=default_zip_file, 
               input_filters_dict={}, 
@@ -421,7 +464,7 @@ def read_data(fileName=default_zip_file,
     '''
     engine_type = engine_type.lower()
 
-    print('\nparameter: input_filters_dict\n\t{}'.format(input_filters_dict))
+    print('\nparameter: input_filters_dict\n\t{}'.format(sorted(input_filters_dict.items())))
     print('parameter: output_feature_list\n\t{}'.format(output_feature_list))    
 
     df = read_file(fileName, input_filters_dict,random_state=random_state)
@@ -433,9 +476,7 @@ def read_data(fileName=default_zip_file,
         available_columns.append(key)
 
     print('input filters available: \n\t{}:'.format(available_columns))
-    
-  
-         
+            
     h=int((df.iloc[0])['h'])  # get height and width of the image
     w=int((df.iloc[0])['w'])  # assumes that h and w are the same for all rows
     
@@ -454,54 +495,48 @@ def read_data(fileName=default_zip_file,
     # construct features, one_hots, computed features etc
  
     outvars = [] 
-    feature_name=[]             
+    feature_name=[]  
+    one_hot_map = []   
+     
     for colName in output_feature_list:
-       
+        one_hot_map.append(0)
         if colName=="aspect_ratio":  
             t1  = np.array(df['originalW'] ,dtype=np.float32)
             t2  = np.array(df['originalH'] ,dtype=np.float32) 
             t1 = t1[:]/t2[:]
-            feature_name.append(colName)
-       
+            feature_name.append(colName)  
             
         elif colName=="upper_case":
             boolDF1 = df['m_label']>=64
             boolDF2 = df['m_label']<=90   
             boolDF = boolDF1 & boolDF2     
             t1 = np.array(boolDF,dtype=np.float32) 
-            feature_name.append(colName)                                   
+            feature_name.append(colName)                                
                    
         elif colName=='image':  
             t1 = np.array(df.loc[:,'r0c0':],dtype=dtype) #extract the images with is everything to the right of row 0 column 0
             t1 = np.multiply(t1, 1.0 / 256.0)     
             feature_name.append(colName)                                  
             
-        elif colName=='m_label_one_hot':  
-            try:
-                t1 = np.array(pd.get_dummies(df['m_label']) , dtype=np.uint16)
-            except:
-                t1 = np.zeros((df.shape[0]))               
-                raise ValueError('Memory error because the number of one-hot m_labels is too large')
+        elif colName=='m_label_one_hot': 
+            t1  = np.array(df['m_label'] , dtype=np.uint16)
+            t1 = convert_to_unique(t1)
+            one_hot_map[-1] = len(np.unique(t1))    
             feature_name.append(colName)                     
             
         elif colName=='font_one_hot': 
-            try: 
-                t1 = np.array(pd.get_dummies(df['font']) , dtype=np.int8)
-            except:
-                t1 = np.zeros((df.shape[0]))
-                raise ValueError('Memory error because the number of one-hot fonts is too large')             
+            t1 =  np.array(df['font'] , dtype=np.uint16)
+            t1 = convert_to_unique(t1)    
+            one_hot_map[-1] = len(np.unique(t1))   
             feature_name.append(colName) 
             
         elif colName=='fontVariant_one_hot':  
-            try:
-                t1 = np.array(pd.get_dummies(df['fontVariant']) , dtype=np.uint16) 
-            except:
-                t1 = np.zeros((df.shape[0]))
-                raise ValueError('Memory error because the number of one-hot fontVariants is too large') 
+            t1 = np.array(df['fontVariant'] , dtype=np.uint16) 
+            t1 = convert_to_unique(t1)
+            one_hot_map[-1] = len(np.unique(t1))   
             feature_name.append(colName)    
                                      
         elif colName.find('column_sum')==0:
-            
             # compute the sum of each vertical column
             t1 = df.loc[:,'r0c0':]
             t1 = np.multiply(t1, 1.0 / 256.0)  
@@ -519,27 +554,15 @@ def read_data(fileName=default_zip_file,
                 feature_name.append('column_sum[:]')                   
             else:
                 t1 = t1[:,l]   
-                feature_name.append('column_sum{}'.format(l))                   
+                feature_name.append('column_sum{}'.format(l))    
 
 
         else: 
             if colName in df.columns  :     
                 t1=np.array(df[colName])
-                feature_name.append(colName)  
+                feature_name.append(colName)              
             else:
                 raise ValueError('Invalid ouput_feature_name: {}: it is not in the the database'.format(colName))          
-   
-                
-        # fixup for formats required by various engines   
-        # features that are straight from the .CSV file, without 
-        # modifications for one-hot or scaling fall here.
-        # tensorflow requires a shape (:,1), thus the reshaping
-        
-        if engine_type=='tensorflow' and len(t1.shape)==1:       
-            t1=np.reshape(t1,(-1,1))
-            
-        if engine_type=='theano' and colName=='image':
-            t1=np.reshape(t1,(-1,1,h,w))
             
         outvars.append(t1)                                             
 
@@ -551,9 +574,9 @@ def read_data(fileName=default_zip_file,
         outvars_test.append( ot[:nTestCount])    
         outvars_evaluation.append(ot[nTestCount:nTestCount+nEvaluationCount])
          
-    data_sets.train = TruthedCharacters(outvars_train, feature_name, h, w)
-    data_sets.test = TruthedCharacters(outvars_test, feature_name, h,  w)
-    data_sets.evaluation = TruthedCharacters(outvars_evaluation,feature_name,  h,  w)    
+    data_sets.train = TruthedCharacters(outvars_train, feature_name, one_hot_map, engine_type, h, w)
+    data_sets.test = TruthedCharacters(outvars_test, feature_name, one_hot_map,  engine_type, h,  w)
+    data_sets.evaluation = TruthedCharacters(outvars_evaluation,feature_name,  one_hot_map,  engine_type, h,  w)    
     print ('feature results:')    
     print ('\tnumber of train Images = ',nTrainCount)
     print ('\tnumber of test Images = ',nTestCount) 
@@ -668,6 +691,11 @@ def load_E13B(chars_to_train=(48,49) , columns=(9,17), nChars=None, test_size=0,
         nChars = ds.train.features[0].shape[0]
         
     labels= ['column {} sum'.format(columns[i]) for i in range(len(columns))]
+    #assert(np.all(ds.train.features[0]==ds.train._features[0]))
+    #assert(np.all(ds.train.features[1]==ds.train._features[1]))
+    #assert(np.all(ds.test.features[0]==ds.test._features[0]))
+    #assert(np.all(ds.test.features[1]==ds.test._features[1]))    
+        
     return ds.train.features[0][:nChars],  ds.train.features[1][:nChars], ds.test.features[0][:nChars], ds.test.features[1][:nChars],  labels
 
 
