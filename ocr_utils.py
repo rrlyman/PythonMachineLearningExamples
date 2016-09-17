@@ -324,13 +324,15 @@ def apply_column_filters(df, input_filters_dict ):
 def convert_to_unique(t1):
     ''' convert unique values in an numpy.array into
     indices into the unique array
+    
     arguments:
     t1 numpy scalar array
+    
     return
     t1 with each value changed to an index 0 to number of unique
     values in t1-1
     '''
-    t2 = t1
+    t2 = np.zeros((len(t1),),dtype=np.int32)
     unique = np.unique(t1)
     for i,u in enumerate(unique):
         t2[t1==u]=i
@@ -519,19 +521,19 @@ def read_data(fileName=default_zip_file,
             feature_name.append(colName)                                  
             
         elif colName=='m_label_one_hot': 
-            t1  = np.array(df['m_label'] , dtype=np.uint16)
+            t1  = np.array(df['m_label'] )
             t1 = convert_to_unique(t1)
             one_hot_map[-1] = len(np.unique(t1))    
             feature_name.append(colName)                     
             
         elif colName=='font_one_hot': 
-            t1 =  np.array(df['font'] , dtype=np.uint16)
+            t1 =  np.array(df['font'])
             t1 = convert_to_unique(t1)    
             one_hot_map[-1] = len(np.unique(t1))   
             feature_name.append(colName) 
             
         elif colName=='fontVariant_one_hot':  
-            t1 = np.array(df['fontVariant'] , dtype=np.uint16) 
+            t1 = np.array(df['fontVariant'] ) 
             t1 = convert_to_unique(t1)
             one_hot_map[-1] = len(np.unique(t1))   
             feature_name.append(colName)    
