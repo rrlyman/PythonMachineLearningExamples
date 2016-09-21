@@ -1,4 +1,9 @@
 '''
+
+dumps out some statistics for the fonts.zip database and
+makes plots, saved in files, of characters for each fontVariant found in 
+the database
+
 Created on Jul 25, 2016
 @author: richard
 '''

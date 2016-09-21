@@ -18,11 +18,8 @@
 This sample program is a modified version of the Google mnist convolutional 
 network tutorial example.  See the mnist tutorial in www.tensorflow.org 
 
-The tutorial version of the program is modified in order to send some
-features directly to the fully connected layer, thus bypassing the
-convolution layer.
-
-Images go through convolution.  Everything else bypasses.
+This graph has multiple sections  3 layers each, 400 100 400 followed
+by a fully connected layer.
 
 see tensor_flow_graph.png
 """# ==============================================================================
@@ -33,8 +30,9 @@ import numpy as np
 import pandas as pd
  
 import tensorflow as tf  
-#with tf.device('/gpu:0'):
-#with tf.device('/cpu:0'):    
+#with tf.device('/GPU:0'):
+#with tf.device('/cpu:0'): 
+       
 def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
  
     ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
@@ -48,7 +46,6 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     Start TensorFlow Interactive Session
     
     """# ==============================================================================
-    
 
     sess = tf.InteractiveSession()
     
@@ -95,13 +92,27 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
         
     nRows = ds.train.num_rows #image height
     nCols = ds.train.num_columns #image width    
-    nFc = 1024      # size of fully connected layer
-    nConv1 = 32     # size of first convolution layer
-    nConv2 = 64     # size of second convolution layer
+    
+    nSections = 10
+    w = list(range(nSections*3))
+    b = list(range(nSections*3))
+    h = list(range(nSections*3+1))
+
+    
+    in_out_width = nRows*nCols
+    internal_width = int(in_out_width/4)
+
+    
+#     nFc0 = 2048      # size of fully connected layer
+    nFc1 = 2048      # size of fully connected layer        
+#     nFc2 = 2048      # size of fully connected layer    
+#     nConv1 = 32     # size of first convolution layer
+#     nConv2 = 64     # size of second convolution layer
     nTarget = ds.train.feature_width[0]  # the number of one_hot features in the target, 'm_label'    
-    n_h_pool2_outputs = int(nRows/4) * int(nCols/4) * nConv2 # second pooling layer 
-    n_h_pool2_outputsx = n_h_pool2_outputs + extra_features_width # fully connected
-        
+    
+#     n_h_pool2_outputs = int(nRows/4) * int(nCols/4) * nConv2 # second pooling layer 
+#     n_h_pool2_outputsx = n_h_pool2_outputs + extra_features_width # fully connected
+#         
     """# ==============================================================================
     
     Build a Multilayer Convolutional Network
@@ -109,17 +120,17 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     Weight Initialization
     
     """# ==============================================================================
-    
+       
     def weight_variable(shape):
         initial = tf.truncated_normal(shape, stddev=0.1)
         return tf.Variable(initial)
     
     def bias_variable(shape):
         initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
-    
+        return tf.Variable(initial)    
+
+        
     """# ==============================================================================
-    
     Convolution and Pooling
     
     keep our code cleaner, let's also abstract those operations into functions.
@@ -128,86 +139,68 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     def conv2d(x, W):
         return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
-    
-    def max_pool_2x2(x):
-        return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                            strides=[1, 2, 2, 1], padding='SAME')
+
     
     """# ==============================================================================
     
-    First Convolutional Layer
-    
-    """# ==============================================================================
-    with tf.name_scope("w_conv1") as scope:
-        W_conv1 = weight_variable([5, 5, 1, nConv1])
-        b_conv1 = bias_variable([nConv1])    
-    
-    with tf.name_scope("reshape_x_image") as scope:
-        x_image = tf.reshape(ph.image, [-1,nCols,nRows,1])
-    
-    image_summ = tf.image_summary("x_image", x_image)
+    First Convolutional Layers
     
     """# ==============================================================================
     
-    We then convolve x_image with the weight tensor, add the bias, apply the ReLU function,
-     and finally max pool.
-    
-    """# ==============================================================================
-    
-    with tf.name_scope("convolve_1") as scope:
-        h_conv1 = tf.nn.relu(conv2d(x_image, W_conv1) + b_conv1)
+    def shapeOuts(n):
+        print ('n={}, hin={},w={}, b={} ,hout={}\n'.format(n, h[n]._shape, w[n]._variable._shape, b[n]._variable._shape, h[n+1]._shape))
         
-    with tf.name_scope("pool_1") as scope:    
-        h_pool1 = max_pool_2x2(h_conv1)
-    
-    """# ==============================================================================
-    
-    Second Convolutional Layer
-    
-    In order to build a deep network, we stack several layers of this type. The second 
-    layer will have 64 features for each 5x5 patch.
-    
-    """# ==============================================================================
-    
-    with tf.name_scope("convolve_2") as scope:
-        W_conv2 = weight_variable([5, 5, nConv1, nConv2])
-        b_conv2 = bias_variable([64])
-        h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)  
-         
-    with tf.name_scope("pool_2") as scope:
-        h_pool2 = max_pool_2x2(h_conv2)
-    
-    """# ==============================================================================
-    
-    Densely Connected Layer
-    
-    Now that the image size has been reduced to 7x7, we add a fully-connected layer 
-    with neurons to allow processing on the entire image. We reshape the tensor 
-    from the pooling layer into a batch of vectors, multiply by a weight matrix, add 
-    a bias, and apply a ReLU.
-    
-    """# ==============================================================================
-    
-    with tf.name_scope("W_fc1_b") as scope:
-        W_fc1 = weight_variable([n_h_pool2_outputsx, nFc])
-        b_fc1 = bias_variable([nFc])
+    def section(n):
+        with tf.name_scope('section_'+str(n)+'_0') as scope:     
+            w[n]=weight_variable([in_out_width, internal_width])
+            b[n]=bias_variable([internal_width])  
+            h[n+1] = tf.nn.relu(tf.matmul(h[n], w[n]) + b[n])
+            shapeOuts(n)
             
-        h_pool2_flat = tf.reshape(h_pool2, [-1, n_h_pool2_outputs])
-        
-        # append the features, the 2nd on, that go directly to the fully connected layer
-        for i in range(2,ds.train.num_features ):
-            h_pool2_flat = tf.concat(1, [h_pool2_flat, ph[i]])  
-        h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+        with tf.name_scope('section_'+str(n)+'_1') as scope:  
+            w[n+1]=weight_variable([internal_width, internal_width])
+            b[n+1]=bias_variable([internal_width])     
+                          
+            h[n+2]=tf.nn.relu(tf.matmul(h[n+1], w[n+1]) + b[n+1])
+            shapeOuts(n+1)                  
+                      
+
+            
+        with tf.name_scope('section_'+str(n)+'_2') as scope:  
+            w[n+2]=weight_variable([internal_width, in_out_width])
+            b[n+2]=bias_variable([in_out_width])   
+            z= tf.nn.relu(tf.matmul(h[n+2], w[n+2]) + b[n+2])
+            h[n+3]= tf.add(z   ,h[n]) #n+3   
+                     
+            print('z shape ={}'.format(z._shape)) 
+            shapeOuts(n+2)                  
+        return    
+              
+    def computeSize(s,tens):
+        sumC = 1
+        tShape = tens.get_shape()
+        nDims = len(tShape)
+        for i in range(nDims):
+            sumC *= tShape[i].value
+        print ('\t{}\t{}'.format(s,sumC),flush=True)
+        return sumC
+                    
+    """# ==============================================================================        
+    Build sectional network
     
-    """# ==============================================================================
-    
+    """# ==============================================================================      
+    h[0]= ph[1]
+    for i in range(nSections):
+        section(3*i)
+            
+    """# ==============================================================================        
     Dropout
     
     """# ==============================================================================
     keep_prob = tf.placeholder(tf.float32,name='keep_prob')
     
     with tf.name_scope("drop") as scope:
-        h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+        h_fc2_drop = tf.nn.dropout(h[nSections*3], keep_prob)
     
     """# ==============================================================================
     
@@ -215,16 +208,28 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     """# ==============================================================================
     with tf.name_scope("softmax") as scope:
-        W_fc2 = weight_variable([nFc, nTarget])
-        b_fc2 = bias_variable([nTarget])    
-        y_conv=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
+        w_fc3 = weight_variable([in_out_width, nTarget])
+        b_fc3 = bias_variable([nTarget])    
+        y_conv=tf.nn.softmax(tf.matmul(h_fc2_drop, w_fc3) + b_fc3)
     
+    print ('network size:',flush=True)
+    total = 0
+    for i in range(nSections*3):
+        total = total + computeSize("w{}".format(i),w[i])
+    total = total + computeSize ("b_fc3",b_fc3) + \
+        computeSize ("w_fc3",w_fc3) 
+
+    
+    print('\ttotal\t{}'.format(total),flush=True)
+        
     """# ==============================================================================
     
     Train and Evaluate the Model
     
     """# ==============================================================================
-    
+    with tf.name_scope("reshape_x_image") as scope:
+        x_image = tf.reshape(ph.image, [-1,nCols,nRows,1])
+        
     with tf.name_scope("xent") as scope:
         # 1e-8 added to eliminate the crash of training when taking log of 0
         cross_entropy = -tf.reduce_sum(ph[0]*tf.log(y_conv+1e-8))
@@ -281,27 +286,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
                 
             print ("step %d, training accuracy %g"%(i, train_accuracy),flush=True)
         train_step.run(feed_dict=feed)
-    
-    def computeSize(s,tens):
-        sumC = 1
-        tShape = tens.get_shape()
-        nDims = len(tShape)
-        for i in range(nDims):
-            sumC *= tShape[i].value
-        print ('\t{}\t{}'.format(s,sumC),flush=True)
-        return sumC
-            
-    print ('network size:',flush=True)
-    total = computeSize("W_fc1",W_fc1)+ \
-    computeSize ("b_fc1",b_fc1) + \
-    computeSize ("W_conv1",W_conv1) + \
-    computeSize ("b_conv1",b_conv1) + \
-    computeSize ("W_conv2",W_conv2) + \
-    computeSize ("b_conv2",b_conv2) + \
-    computeSize ("W_fc2",W_fc2) + \
-    computeSize ("b_fc2",b_fc2)
-    print('\ttotal\t{}'.format(total),flush=True)
-    
+        
     feed={keep_prob: 1.0}
     # assign feature data to each placeholder
     error_images = np.empty((0,nRows,nCols))
@@ -311,9 +296,9 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     for n in range(0,ds.test.features[0].shape[0],100 ):   
         for i in range(ds.train.num_features ):  
             feed[ph[i]] = ds.test.features[i] [n:n+100]
-        result = sess.run([accuracy, x_image, W_conv1, correct_prediction], feed_dict=feed)    
+        result = sess.run([accuracy, x_image, correct_prediction], feed_dict=feed)    
         test_accuracy += result[0]
-        error_images = np.append(error_images, result[1][:,:,:,0][result[3]==False],axis=0)
+        error_images = np.append(error_images, result[1][:,:,:,0][result[2]==False],axis=0)
         m += 1
     try:        
         print ("test accuracy {} for font: {}".format(test_accuracy/m, input_filters_dict['font']),flush=True)       
@@ -340,7 +325,7 @@ if True:
     # input_filters_dict = {'font': ('OCRA','OCRB'), 'fontVariant':('scanned',)}
     
     # select everything; all fonts , font variants, etc.
-    input_filters_dict = {}
+    # input_filters_dict = {}
     
     # select the digits 0 through 9 in the E13B font
     # input_filters_dict = {'m_label': range(48,58), 'font': 'E13B'}
@@ -359,7 +344,9 @@ if True:
 
     # train the digits 0-9 for all fonts
     #input_filters_dict = {'m_label': range(48,58)}
-    output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']    
+    input_filters_dict = {'font': 'OCRB','m_label': list(range(48,58))+list(range(65,91))+list(range(97,123))}    
+    #input_filters_dict = {}    
+    output_feature_list = ['m_label_one_hot','image']    
     train_a_font(input_filters_dict,  output_feature_list, nEpochs = 50000)    
     
 else:
@@ -372,13 +359,13 @@ else:
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(df1)
    
-    output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']
+    output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case','font_one_hot']
     
     # Change nEpochs to 5000 for better results
     for l in df1:
         input_filters_dict= {'font': (l[0],)}       
         train_a_font(input_filters_dict,output_feature_list, nEpochs = 500) 
     
-
+    
 print ('\n########################### No Errors ####################################')
 
