@@ -9,6 +9,8 @@ a separate repository: https://github.com/Lasagne/Recipes
 
 https://github.com/Lasagne/Lasagne/blob/master/examples/mnist.py
 
+Make sure that CUDNN and CUDA are in the paths when running on LiClipse
+
 @author: richard lyman
 """
 
@@ -175,9 +177,8 @@ def iterate_minibatches(inputs, targets, batchsize, shuffle=False):
 # easier to read.
 
 def main(model='mlp', num_epochs=50):
-
+    
     print("Loading data...")
-
     input_filters_dict = {'font': ('HANDPRINT',), 'm_label': range(48,57)}    
     output_feature_list = ['m_label','image']    
     ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
