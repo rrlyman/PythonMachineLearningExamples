@@ -6,16 +6,28 @@
 floatX = float32
 device = gpu0
 
-NOT WORKING under LiClipse
 
 @author: richard lyman
 
 '''
+import os
+print (os.get_exec_path())
+p=os.getenv('PATH')
+print("getenv('PATH')={}".format(p))
+p=os.getenv('LD_LIBRARY_PATH')
+print("getenv('LD_LIBRARY_PATH')={}".format(p))
+p=os.getenv('CUDA_HOME')
+print("getenv('CUDA_HOME')={}".format(p))
+p=os.getenv('PYTHONPATH')
+print("getenv('PYTHONPATH')={}".format(p))
+
+#os.environ['PATH'] = p
+# print(os.getenv('PATH'))
 from theano import function, config, shared, sandbox
 import theano.tensor as T
-import theano
 import numpy
 import time
+
 vlen = 10 * 30 * 768  # 10 x #cores x # threads per core
 iters = 1000
 
@@ -33,3 +45,5 @@ if numpy.any([isinstance(x.op, T.Elemwise) for x in f.maker.fgraph.toposort()]):
     print('Used the cpu')
 else:
     print('Used the gpu')
+    
+print ('\n########################### No Errors ####################################')    
