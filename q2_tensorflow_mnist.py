@@ -33,6 +33,7 @@ import numpy as np
 import pandas as pd
  
 import tensorflow as tf  
+dtype=np.float32
 #with tf.device('/gpu:0'):
 #with tf.device('/cpu:0'):    
 def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
@@ -40,7 +41,8 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
                                 output_feature_list=output_feature_list,
                                 test_size = .1,
-                                engine_type='tensorflow')
+                                engine_type='tensorflow',
+                                dtype=dtype)
 
         
     """# ==============================================================================
@@ -85,7 +87,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
             nm = 'x_'+nm
         if i>1:
             extra_features_width += ds.train.feature_width[i]
-        lst.append(tf.placeholder(tf.float32, shape=[None, ds.train.feature_width[i]], name=nm))
+        lst.append(tf.placeholder(dtype, shape=[None, ds.train.feature_width[i]], name=nm))
         
     # ph is a named tuple with key names like 'image', 'm_label', and values that
     # are tensors.  The display name on the Chrome graph are 'y_m_label', 'x_image, 
@@ -110,13 +112,13 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     """# ==============================================================================
     
-    def weight_variable(shape):
-        initial = tf.truncated_normal(shape, stddev=0.1)
+    def weight_variable(shape, dtype):
+        initial = tf.truncated_normal(shape, stddev=0.1,dtype=dtype)
         return tf.Variable(initial)
     
-    def bias_variable(shape):
-        initial = tf.constant(0.1, shape=shape)
-        return tf.Variable(initial)
+    def bias_variable(shape, dtype):
+        initial = tf.constant(0.1, shape=shape, dtype=dtype)
+        return tf.Variable(initial)   
     
     """# ==============================================================================
     
@@ -139,8 +141,8 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     """# ==============================================================================
     with tf.name_scope("w_conv1") as scope:
-        W_conv1 = weight_variable([5, 5, 1, nConv1])
-        b_conv1 = bias_variable([nConv1])    
+        W_conv1 = weight_variable([5, 5, 1, nConv1],dtype)
+        b_conv1 = bias_variable([nConv1],dtype)    
     
     with tf.name_scope("reshape_x_image") as scope:
         x_image = tf.reshape(ph.image, [-1,nCols,nRows,1])
@@ -170,8 +172,8 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     """# ==============================================================================
     
     with tf.name_scope("convolve_2") as scope:
-        W_conv2 = weight_variable([5, 5, nConv1, nConv2])
-        b_conv2 = bias_variable([64])
+        W_conv2 = weight_variable([5, 5, nConv1, nConv2],dtype)
+        b_conv2 = bias_variable([64],dtype)
         h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)  
          
     with tf.name_scope("pool_2") as scope:
@@ -189,8 +191,8 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     """# ==============================================================================
     
     with tf.name_scope("W_fc1_b") as scope:
-        W_fc1 = weight_variable([n_h_pool2_outputsx, nFc])
-        b_fc1 = bias_variable([nFc])
+        W_fc1 = weight_variable([n_h_pool2_outputsx, nFc],dtype)
+        b_fc1 = bias_variable([nFc],dtype)
             
         h_pool2_flat = tf.reshape(h_pool2, [-1, n_h_pool2_outputs])
         
@@ -204,7 +206,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     Dropout
     
     """# ==============================================================================
-    keep_prob = tf.placeholder(tf.float32,name='keep_prob')
+    keep_prob = tf.placeholder(dtype,name='keep_prob')
     
     with tf.name_scope("drop") as scope:
         h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
@@ -215,8 +217,8 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     """# ==============================================================================
     with tf.name_scope("softmax") as scope:
-        W_fc2 = weight_variable([nFc, nTarget])
-        b_fc2 = bias_variable([nTarget])    
+        W_fc2 = weight_variable([nFc, nTarget],dtype)
+        b_fc2 = bias_variable([nTarget],dtype)    
         y_conv=tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
     
     """# ==============================================================================
@@ -236,7 +238,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     with tf.name_scope("test") as scope:        
         correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(ph[0],1))
     
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, dtype))
         accuracy_summary = tf.scalar_summary("accuracy", accuracy)    
     
     merged = tf.merge_all_summaries()
@@ -340,7 +342,7 @@ if True:
     # input_filters_dict = {'font': ('OCRA','OCRB'), 'fontVariant':('scanned',)}
     
     # select everything; all fonts , font variants, etc.
-    input_filters_dict = {}
+    #input_filters_dict = {}
     
     # select the digits 0 through 9 in the E13B font
     # input_filters_dict = {'m_label': range(48,58), 'font': 'E13B'}
@@ -358,9 +360,9 @@ if True:
     #output_feature_list = ['font_one_hot','image','italic','aspect_ratio','upper_case']   
 
     # train the digits 0-9 for all fonts
-    #input_filters_dict = {'m_label': range(48,58)}
+    input_filters_dict = {'m_label': range(48,58)}
     output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']    
-    train_a_font(input_filters_dict,  output_feature_list, nEpochs = 50000)    
+    train_a_font(input_filters_dict,  output_feature_list, nEpochs = 5000)    
     
 else:
     # loop through all the fonts and train individually

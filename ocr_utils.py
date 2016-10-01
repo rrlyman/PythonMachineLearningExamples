@@ -156,7 +156,7 @@ class TruthedCharacters(object):
     Holds the training features and size information
 
     """
-    def __init__(self,  features, output_feature_list, one_hot_map, engine_type,h,w):
+    def __init__(self,  features, output_feature_list, one_hot_map, engine_type,h,w, dtype):
 
         self._num_examples = features[0].shape[0]
         self._nRows = h
@@ -168,6 +168,7 @@ class TruthedCharacters(object):
         self._num_features = len(features)
         self._one_hot_map = one_hot_map             # list >0 for each feature that is one_hot
         self._engine_type= engine_type        
+        self._dtype = dtype
         
         self._feature_width=[]
         for i in range(self._num_features ):
@@ -210,7 +211,7 @@ class TruthedCharacters(object):
         if n_hots==0:
             rtn=self.engine_conversion(t1, self._feature_names[i])
         else:
-            rtn= self.engine_conversion(np.eye(n_hots )[t1], self._feature_names[i])            
+            rtn= self.engine_conversion(np.eye(n_hots, dtype=self._dtype )[t1], self._feature_names[i])            
         return rtn    
     
     @property
@@ -222,7 +223,7 @@ class TruthedCharacters(object):
                 rtn.append(self.engine_conversion(t1, nm) )
                 #assert(np.all(rtn[-1]==t1))
             else:
-                rtn.append( self.engine_conversion(np.eye(n_hots )[t1], nm)   )             
+                rtn.append( self.engine_conversion(np.eye(n_hots, dtype=self._dtype )[t1], nm)   )             
         return rtn
     
     @property
@@ -271,7 +272,7 @@ class TruthedCharacters(object):
         outs = []
         for i in range(self._num_features):
             outs += [self.get_features(i,start,end)]
-         
+           
         return outs
         
     def dump_values(self): 
@@ -500,11 +501,11 @@ def read_data(fileName=default_zip_file,
     feature_name=[]  
     one_hot_map = []   
      
-    for colName in output_feature_list:
+    for colName in output_feature_list:       
         one_hot_map.append(0)
         if colName=="aspect_ratio":  
-            t1  = np.array(df['originalW'] ,dtype=np.float32)
-            t2  = np.array(df['originalH'] ,dtype=np.float32) 
+            t1  = np.array(df['originalW'] ,dtype=dtype)
+            t2  = np.array(df['originalH'] ,dtype=dtype) 
             t1 = t1[:]/t2[:]
             feature_name.append(colName)  
             
@@ -512,7 +513,7 @@ def read_data(fileName=default_zip_file,
             boolDF1 = df['m_label']>=64
             boolDF2 = df['m_label']<=90   
             boolDF = boolDF1 & boolDF2     
-            t1 = np.array(boolDF,dtype=np.float32) 
+            t1 = np.array(boolDF,dtype=dtype) 
             feature_name.append(colName)                                
                    
         elif colName=='image':  
@@ -521,7 +522,7 @@ def read_data(fileName=default_zip_file,
             feature_name.append(colName)                                  
             
         elif colName=='m_label_one_hot': 
-            t1  = np.array(df['m_label'] )
+            t1  = np.array(df['m_label'])
             t1 = convert_to_unique(t1)
             one_hot_map[-1] = len(np.unique(t1))    
             feature_name.append(colName)                     
@@ -561,7 +562,7 @@ def read_data(fileName=default_zip_file,
 
         else: 
             if colName in df.columns  :     
-                t1=np.array(df[colName])
+                t1=np.array(df[colName], dtype=dtype)
                 feature_name.append(colName)              
             else:
                 raise ValueError('Invalid ouput_feature_name: {}: it is not in the the database'.format(colName))          
@@ -576,9 +577,9 @@ def read_data(fileName=default_zip_file,
         outvars_test.append( ot[:nTestCount])    
         outvars_evaluation.append(ot[nTestCount:nTestCount+nEvaluationCount])
          
-    data_sets.train = TruthedCharacters(outvars_train, feature_name, one_hot_map, engine_type, h, w)
-    data_sets.test = TruthedCharacters(outvars_test, feature_name, one_hot_map,  engine_type, h,  w)
-    data_sets.evaluation = TruthedCharacters(outvars_evaluation,feature_name,  one_hot_map,  engine_type, h,  w)    
+    data_sets.train = TruthedCharacters(outvars_train, feature_name, one_hot_map, engine_type, h, w, dtype)
+    data_sets.test = TruthedCharacters(outvars_test, feature_name, one_hot_map,  engine_type, h,  w, dtype)
+    data_sets.evaluation = TruthedCharacters(outvars_evaluation,feature_name,  one_hot_map,  engine_type, h,  w, dtype)    
     print ('feature results:')    
     print ('\tnumber of train Images = ',nTrainCount)
     print ('\tnumber of test Images = ',nTestCount) 

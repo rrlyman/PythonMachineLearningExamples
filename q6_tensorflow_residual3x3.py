@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
  
 import tensorflow as tf  
+dtype = np.float32
 #with tf.device('/GPU:0'):
 #with tf.device('/cpu:0'): 
        
@@ -38,7 +39,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
                                 output_feature_list=output_feature_list,
                                 test_size = .1,
-                                engine_type='tensorflow')
+                                engine_type='tensorflow',dtype=dtype)
 
         
     """# ==============================================================================
@@ -82,12 +83,13 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
             nm = 'x_'+nm
         if i>1:
             extra_features_width += ds.train.feature_width[i]
-        lst.append(tf.placeholder(tf.float32, shape=[None, ds.train.feature_width[i]], name=nm))
+        print (ds.train.features[i].dtype)
+        lst.append(tf.placeholder(dtype, shape=[None, ds.train.feature_width[i]], name=nm))
         
     # ph is a named tuple with key names like 'image', 'm_label', and values that
     # are tensors.  The display name on the Chrome graph are 'y_m_label', 'x_image, 
     # x_upper_case etc.
-    Place_Holders = namedtuple('Place_Holders', output_feature_list)   
+    Place_Holders = namedtuple('Place_Holders', ds.train.feature_names)   
     ph = Place_Holders(*lst) # unpack placeholders into named Tuple
         
     nRows = ds.train.num_rows #image height
@@ -121,12 +123,12 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     """# ==============================================================================
        
-    def weight_variable(shape):
-        initial = tf.truncated_normal(shape, stddev=0.1)
+    def weight_variable(shape, dtype):
+        initial = tf.truncated_normal(shape, stddev=0.1,dtype=dtype)
         return tf.Variable(initial)
     
-    def bias_variable(shape):
-        initial = tf.constant(0.1, shape=shape)
+    def bias_variable(shape, dtype):
+        initial = tf.constant(0.1, shape=shape, dtype=dtype)
         return tf.Variable(initial)    
 
         
@@ -152,23 +154,21 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
         
     def section(n):
         with tf.name_scope('section_'+str(n)+'_0') as scope:     
-            w[n]=weight_variable([in_out_width, internal_width])
-            b[n]=bias_variable([internal_width])  
+            w[n]=weight_variable([in_out_width, internal_width],dtype)
+            b[n]=bias_variable([internal_width],dtype)  
             h[n+1] = tf.nn.relu(tf.matmul(h[n], w[n]) + b[n])
             shapeOuts(n)
             
         with tf.name_scope('section_'+str(n)+'_1') as scope:  
-            w[n+1]=weight_variable([internal_width, internal_width])
-            b[n+1]=bias_variable([internal_width])     
+            w[n+1]=weight_variable([internal_width, internal_width],dtype)
+            b[n+1]=bias_variable([internal_width],dtype)     
                           
             h[n+2]=tf.nn.relu(tf.matmul(h[n+1], w[n+1]) + b[n+1])
             shapeOuts(n+1)                  
-                      
-
-            
+                            
         with tf.name_scope('section_'+str(n)+'_2') as scope:  
-            w[n+2]=weight_variable([internal_width, in_out_width])
-            b[n+2]=bias_variable([in_out_width])   
+            w[n+2]=weight_variable([internal_width, in_out_width],dtype)
+            b[n+2]=bias_variable([in_out_width],dtype)   
             z= tf.nn.relu(tf.matmul(h[n+2], w[n+2]) + b[n+2])
             h[n+3]= tf.add(z   ,h[n]) #n+3   
                      
@@ -197,7 +197,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     Dropout
     
     """# ==============================================================================
-    keep_prob = tf.placeholder(tf.float32,name='keep_prob')
+    keep_prob = tf.placeholder(dtype,name='keep_prob')
     
     with tf.name_scope("drop") as scope:
         h_fc2_drop = tf.nn.dropout(h[nSections*3], keep_prob)
@@ -208,8 +208,8 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     
     """# ==============================================================================
     with tf.name_scope("softmax") as scope:
-        w_fc3 = weight_variable([in_out_width, nTarget])
-        b_fc3 = bias_variable([nTarget])    
+        w_fc3 = weight_variable([in_out_width, nTarget],dtype)
+        b_fc3 = bias_variable([nTarget],dtype)    
         y_conv=tf.nn.softmax(tf.matmul(h_fc2_drop, w_fc3) + b_fc3)
     
     print ('network size:',flush=True)
@@ -241,7 +241,7 @@ def train_a_font(input_filters_dict,output_feature_list, nEpochs=5000):
     with tf.name_scope("test") as scope:        
         correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(ph[0],1))
     
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, dtype))
         accuracy_summary = tf.scalar_summary("accuracy", accuracy)    
     
     merged = tf.merge_all_summaries()
@@ -344,7 +344,7 @@ if True:
 
     # train the digits 0-9 for all fonts
     #input_filters_dict = {'m_label': range(48,58)}
-    input_filters_dict = {'font': 'OCRB','m_label': list(range(48,58))+list(range(65,91))+list(range(97,123))}    
+    input_filters_dict = {'font':'ARIAL','m_label': list(range(48,58))+list(range(65,91))+list(range(97,123))}    
     #input_filters_dict = {}    
     output_feature_list = ['m_label_one_hot','image']    
     train_a_font(input_filters_dict,  output_feature_list, nEpochs = 50000)    
