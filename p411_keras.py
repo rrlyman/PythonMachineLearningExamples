@@ -70,7 +70,7 @@ def do_keras(X_train,X_test, y_train_ohe, y_train,y_test):
     model.fit(X_train, y_train_ohe, 
               nb_epoch=50, 
               batch_size=300, 
-              verbose=1, 
+              verbose=2, 
               validation_split=0.1
               )
     y_train_pred = model.predict_classes(X_train, verbose=0)
