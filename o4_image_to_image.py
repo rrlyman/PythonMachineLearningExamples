@@ -18,13 +18,8 @@
 This sample program is a modified version of the Google mnist convolutional 
 network tutorial example.  See the mnist tutorial in www.tensorflow.org 
 
-The tutorial version of the program is modified in order to send some
-features directly to the fully connected layer, thus bypassing the
-convolution layer.
-
-It has TWO convolution layers and THREE fully connected (2048 node) layers
-
-Images go through convolution.  Everything else bypasses.
+This graph has multiple sections  3 layers each, 400 100 400 followed
+by a fully connected layer.
 
 see tensor_flow_graph.png
 """# ==============================================================================
@@ -33,16 +28,15 @@ import datetime
 from collections import namedtuple
 import numpy as np
 import pandas as pd
-import n1_2cnv1fc as nnetwork 
-
-# import tensorflow as tf  
- 
+import n1_image_to_image as nnetwork  
+#import n1_residual3x4 as nnetwork  
+import tensorflow as tf  
 dtype = np.float32
 #with tf.device('/GPU:0'):
-#with tf.device('/cpu:0'):    
-
+#with tf.device('/cpu:0'): 
+       
     
-if False:
+if True:
     # single font train
     
     # examples
@@ -74,16 +68,25 @@ if False:
     #output_feature_list = ['font_one_hot','image','italic','aspect_ratio','upper_case']   
 
     # train the digits 0-9 for all fonts
-    input_filters_dict = {'m_label': list(range(48,58))+list(range(65,91))+list(range(97,123)),'fontVariant':'scanned'}
+    input_filters_dict = {'m_label': range(48,58),'italic':0,'strength':.4}
+    #input_filters_dict = {'font':'BANKGOTHIC','m_label': list(range(48,58)),'italic':0,'strength':.7}    
     #input_filters_dict = {}    
-    output_feature_list = ['m_label_one_hot','image','italic','aspect_ratio','upper_case']    
+    output_feature_list = ['low_pass_image','image']    
+ 
+    """# ==============================================================================
+    
+    Train and Evaluate the Model
+    
+    """# ==============================================================================
     ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
                                 output_feature_list=output_feature_list,
-                                test_size = .1,
+                                test_size = .2,
                                 engine_type='tensorflow',dtype=dtype)    
-    nn = nnetwork.network( ds.train)
+    nn = nnetwork.network(ds.train)
     nn.fit( ds.train,  nEpochs=5000)  
-    nn.test(ds.test)
+    nn.test2(ds.test)
+      
+#     train_a_font(input_filters_dict,  output_feature_list, nEpochs = 50000)    
     
 else:
     # loop through all the fonts and train individually
@@ -99,22 +102,9 @@ else:
     
     # Change nEpochs to 5000 for better results
     for l in df1:
-        #input_filters_dict= {'font': (l[0],)}   
-        input_filters_dict = {'m_label': list(range(48,58))+list(range(65,91))+list(range(97,123)),'font': (l[0],)}            
-        #train_a_font(input_filters_dict,output_feature_list, nEpochs = 500) 
-        
-        ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
-                                    output_feature_list=output_feature_list,
-                                    test_size = .1,
-                                    engine_type='tensorflow',dtype=dtype)    
-        
-        nn = nnetwork.network(ds.train)
-        nn.fit( ds.train,  nEpochs=5000)  
-        nn.test(ds.test, title = l[0] )
-        nn.reset_graph()
-
-
-        
+        input_filters_dict= {'font': (l[0],)}       
+        train_a_font(input_filters_dict,output_feature_list, nEpochs = 5000) 
+    
     
 print ('\n########################### No Errors ####################################')
 

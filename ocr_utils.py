@@ -25,7 +25,10 @@ Miscellaneous Plot Functions:
 
 ######################################################
 show_plot = False   #set True to show plot on screen, set False to save to file
+plot_dir = '/tmp/plots'
 #####################################################
+
+extension = '.jpg'
 
 ##############################################################################
 default_zip_file = "fonts.zip"   #small data set
@@ -40,6 +43,9 @@ from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import sys
 import os
+import subprocess
+from PIL import Image
+import io
 
 
 def report(blocknr, blocksize, size):
@@ -165,8 +171,12 @@ class TruthedCharacters(object):
         self._epochs_completed = 0
         self._index_in_epoch = 0
         self._feature_names = output_feature_list   # list of names of features
+        
+        for i,nm in enumerate(self._feature_names):
+            if nm in self._feature_names[i+1:]:
+                self._feature_names[i+1] = nm + "_"+ str(i)
         self._num_features = len(features)
-        self._one_hot_map = one_hot_map             # list >0 for each feature that is one_hot
+        self._one_hot_map = one_hot_map             # list 0 for non one-hots, or # of one_hots 
         self._engine_type= engine_type        
         self._dtype = dtype
         
@@ -252,7 +262,7 @@ class TruthedCharacters(object):
             A list of npArrays, one for each feature requested
             
         """        
-    
+        batch_size = min(batch_size, self._num_examples)
         start = self._index_in_epoch
         self._index_in_epoch += batch_size
         if self._index_in_epoch > self._num_examples:
@@ -267,7 +277,7 @@ class TruthedCharacters(object):
             # Start next epoch
             start = 0
             self._index_in_epoch = batch_size
-            assert batch_size <= self._num_examples
+
         end = self._index_in_epoch
         outs = []
         for i in range(self._num_features):
@@ -313,6 +323,7 @@ def apply_column_filters(df, input_filters_dict ):
         filtered datafram
     '''
     for key,value in input_filters_dict.items():
+    
         if isinstance(value, str): 
             value = (value,) 
         if hasattr(value, '__iter__')==False:
@@ -320,6 +331,10 @@ def apply_column_filters(df, input_filters_dict ):
         if len(value) > 0:
             criterion = df[key].map(lambda x: x in value)
             df = df[criterion]  
+#     try:
+#         print (df['font'].iloc[0])
+#     except:
+#         print (df)
     return df
 
 def convert_to_unique(t1):
@@ -338,7 +353,8 @@ def convert_to_unique(t1):
     for i,u in enumerate(unique):
         t2[t1==u]=i
     return t2
-            
+
+
 def read_data(fileName=default_zip_file, 
               input_filters_dict={}, 
               output_feature_list=[], 
@@ -347,6 +363,7 @@ def read_data(fileName=default_zip_file,
               dtype=np.float32, 
               engine_type='', 
               random_state=None  ):
+
     """
     Reads data from a given .zip file holding .csv files, 
     filters the data to extract the requested features and 
@@ -448,10 +465,7 @@ def read_data(fileName=default_zip_file,
          respective column in the .csv file
     
     """
-    class DataSets(object):
-        pass
-    
-    data_sets = DataSets()
+
 
     '''
     1) read in the fonts applying the input filter to extract only the fonts, 
@@ -465,13 +479,35 @@ def read_data(fileName=default_zip_file,
     
     5) construct training and test set TruthedCharacters classes and return them    
     '''
-    engine_type = engine_type.lower()
-
-    print('\nparameter: input_filters_dict\n\t{}'.format(sorted(input_filters_dict.items())))
-    print('parameter: output_feature_list\n\t{}'.format(output_feature_list))    
 
     df = read_file(fileName, input_filters_dict,random_state=random_state)
+ 
+    return read_df(df, 
+        input_filters_dict=input_filters_dict, 
+        output_feature_list=output_feature_list, 
+        test_size=test_size, 
+        evaluation_size=evaluation_size, 
+        dtype=dtype, 
+        engine_type=engine_type, 
+        random_state=random_state  )
+                    
+def read_df(df, 
+              input_filters_dict={}, 
+              output_feature_list=[], 
+              test_size=0.0, 
+              evaluation_size=0.0, 
+              dtype=np.float32, 
+              engine_type='', 
+              random_state=None  ):
     
+    class DataSets(object):
+        pass
+    
+    print('\nparameter: input_filters_dict\n\t{}'.format(sorted(input_filters_dict.items())))
+    print('parameter: output_feature_list\n\t{}'.format(output_feature_list))    
+    
+    engine_type = engine_type.lower()
+    data_sets = DataSets()
     available_columns = []
     for key in df.columns:
         if key=='r0c0':  #omit the image
@@ -519,7 +555,38 @@ def read_data(fileName=default_zip_file,
         elif colName=='image':  
             t1 = np.array(df.loc[:,'r0c0':],dtype=dtype) #extract the images with is everything to the right of row 0 column 0
             t1 = np.multiply(t1, 1.0 / 256.0)     
-            feature_name.append(colName)                                  
+            feature_name.append(colName)  
+            
+        elif colName=='low_pass_image':  
+            ''' Create unique images for each of the labels, using a single font
+            These are the concepts.
+            Make an np array of the original images with the concept images replacing
+            the originals.
+            '''
+            
+            boolDF1 = df['fontVariant'] == 'BANKGOTHIC MD BT'
+            
+            criterion = df['fontVariant'].map(lambda x: x in 'BANKGOTHIC MD BT')
+            x = df[criterion] 
+            dx = pd.DataFrame(df)
+            labels = np.array(x['m_label'])
+            
+            for i,label in enumerate(labels):  
+                to_be_replaced =  df['m_label']!=label     
+                dx =dx.where(to_be_replaced, other= x.iloc[i], axis=1)        
+
+            
+            t1 = np.array(dx.loc[:,'r0c0':],dtype=dtype) #extract the images with is everything to the right of row 0 column 0
+            t1 = np.reshape(t1, (t1.shape[0],h,w))
+            t2 = np.zeros((t1.shape[0],h,int(w/2)),dtype=dtype)            
+            for col in range(w):
+                t2[:,:,int(col/2)] = np.sum(t1[:,:,col:col+2],axis=2)
+            t3 = np.zeros((t1.shape[0], int(h/2),int(w/2)),dtype=dtype)
+            for row in range(h):
+                t3[:,int(row/2),:] = np.sum(t2[:,row:row+2,:],axis=1)    
+            t1 = np.reshape(t3,(t3.shape[0],int(h*w/4)) )        
+            t1=(t1/4)/256.0                  
+            feature_name.append(colName)                                        
             
         elif colName=='m_label_one_hot': 
             t1  = np.array(df['m_label'])
@@ -532,6 +599,12 @@ def read_data(fileName=default_zip_file,
             t1 = convert_to_unique(t1)    
             one_hot_map[-1] = len(np.unique(t1))   
             feature_name.append(colName) 
+            
+        elif colName=='orientation_one_hot': 
+            t1 =  np.array(df['orientation'])
+            t1 = convert_to_unique(t1)    
+            one_hot_map[-1] = len(np.unique(t1))   
+            feature_name.append(colName)             
             
         elif colName=='fontVariant_one_hot':  
             t1 = np.array(df['fontVariant'] ) 
@@ -721,10 +794,135 @@ def compute_column_sum(npx,h,w):
     see column sum notes under read_data
     '''
     npx = np.reshape(npx,(npx.shape[0],h,w))
-    return np.sum(npx,axis=1) # sum of rows in each column    
+    return np.sum(npx,axis=1) # sum of rows in each column  
+  
+import skimage.transform as af
+  
+def shear(X, skew):
+    ''' given a 2D image, shear and return a 2D image
+    
+    parameters:
+        X is the 2D image of shape (nRows, nColumns)
+        skew is the amount to shear in the range 0 to 1.0
+    '''
+    
+    rows = X.shape[0]
+    cols = X.shape[1]    
+    ratioY = skew*cols/rows
+    matrix =  np.array( [[1, ratioY, 0] ,[0, 1, 0] ,[0, 0, 1 ]])                                         
+    tp=af.ProjectiveTransform(matrix=matrix) 
+    #tp  = tf.AffineTransform(scale=(.3,.3), shear=skew)    
+    f = af.warp(X, tp)      
+    return f
+# 
+# class file_names(object):
+#     ''' store variants of file a file name with .jpg, .png, .box variations
+#     '''
+#     def __init__(selp, base_name, dir_name = ''):
+#         base = base_name
+#         jpeg = base_name + '.jpg'
+#         png = base_name + '.png'
+#         box = base_name + '.box'
+        
+def file_to_df(base_file, character_size, title = "", white_space = 0, input_filters_dict={}):
+    ''' 
+    Given a 2D image file with some characters, uses Tesseract to cut out
+    the characters, , plots the characters and the boxes that Tesseract
+    found, then places the characters into a pandas dataframe
+    and also returns the images in 2D format
+    parameters:
+        image_file, string  is the path name of the file
+        character size, integer,  is the number of pixels of the return images
+            in pixels, height and width are equal
+        title, string is the name to be in the character/box plotted file
+        white_space is the amount of padding to be placed around the characters
+    '''
+    input_image_file_jpg = base_file + extension
+    print('input_image_file_jpg = {}'.format(input_image_file_jpg ))
+    subprocess.run(['tesseract', input_image_file_jpg, base_file,  'batch.nochop', 'makebox'])
+    #subprocess.run(['tesseract', input_image_file_jpg])    
+    im = Image.open(input_image_file_jpg)
+    
+    images =[]
+    recognized_label = []
+    tops=[]
+    originalH=[]
+    lefts=[]
+    originalW=[]
+    orientation = 0
 
+    f = open(base_file+'.box','r')
 
-#################  Miscellaneous Plot Routines ##############################
+    for line in f: 
+        coords = line.split(' ')        
+        top = im.height-int(coords[4])
+        bottom = im.height-int(coords[2])
+        left = int(coords[1])
+        right = int(coords[3])
+        tops.append(top)
+        originalW.append(right-left)
+        lefts.append(left)
+        originalH.append(bottom-top)
+        
+        img2 = Image.new('L',(character_size,character_size),color=255)
+        img =  im.crop(box=(left, top, right, bottom))       
+        img = img.convert('LA')     
+        img2.paste(img, box=(white_space,white_space))    
+                    
+        imgByteArr = img2.tobytes()
+        lst = list(imgByteArr)
+        image = np.array(lst)/255.0 
+        image = 1.0 - image        
+        images.append(image)
+        try:
+            recognized_label.append(ord(coords[0]))
+        except:
+            print (coords[0])
+            recognized_label.append(ord('_'))
+ 
+    df = make_df(images, character_size, character_size, originalH, originalW, tops, lefts, orientation, recognized_label )
+    df= apply_column_filters(df, input_filters_dict )
+    t1 = np.array(df.loc[:,'r0c0':]) #extract the images with is everything to the right of row 0 column 0 
+    t1 = np.reshape(t1,(t1.shape[0],character_size,character_size )) 
+    montage(t1, title=title)
+    return df,t1
+        
+def make_df(images, character_w, character_h, originalH, originalW, tops, lefts, orientation, recognized_label ):
+    ''' Given an numpy array of images and attributes of each image, place these in a pandas dataframe
+    '''
+    x = np.zeros((len(images), character_w*character_h+8))
+    x[:,0] = recognized_label
+    x[:,1] = orientation   
+    x[:,2] = tops
+    x[:,3] = lefts  
+    x[:,4] = originalH
+    x[:,5] = originalW   
+    x[:,6] = character_h  
+    x[:,7] = character_w
+#     print (' appending images')
+    x[:,8:] = images                 
+#     print (' DONE appending images')            
+    
+#     images = np.array(images)   
+#     images = np.insert(images, 0, character_w, axis=1)
+#     images = np.insert(images, 0, character_h, axis=1)
+#     images = np.insert(images, 0, originalW, axis=1)    
+#     images = np.insert(images, 0, originalH, axis=1)
+#     images = np.insert(images, 0, lefts, axis=1)      
+#     images = np.insert(images, 0, tops, axis=1)
+#     images = np.insert(images, 0, orientation, axis=1) 
+#     images = np.insert(images, 0, recognized_label, axis=1)
+        
+    columns = ['m_label', 'orientation','m_top','m_left','originalH','originalW', 'h','w']
+    for i in range(character_h):
+        for j in range(character_w):
+            columns.append('r{}c{}'.format(i,j))
+
+    df = pd.DataFrame(x, columns=columns)          
+
+    return  df
+                
+###############################################  Miscellaneous Plot Routines ############################################################
 
 num_fig = 0 # used to give each saved plot a unique name
 def program_name():
@@ -739,7 +937,7 @@ def show_figures(plt, title="untitled"):
         
         If show_plot is true, the the plot is shown on the screen.
         If show_plot is false, the plot will be saved to a file in the
-        ./plots folder
+        /plots folder
         
         The files are given unique names based on the plot title
     args
@@ -759,7 +957,7 @@ def show_figures(plt, title="untitled"):
     if show_plot:
         plt.show()   
     else:    
-        plot_dir = './plots'
+
         try:
             os.mkdir(plot_dir)
         except:
@@ -773,6 +971,7 @@ def show_figures(plt, title="untitled"):
         plt.clf() # savefig does not clear the figure like show does
         plt.cla()
     num_fig += 1
+#     print ('END PLOT')
 
 def scatter_plot(X=None, y=None, legend_entries=[],axis_labels=("",""), title="",xlim=None, ylim=None):
     ''' 
@@ -892,7 +1091,7 @@ def plot_decision_regions(X=None, y=None, classifier=None, resolution = .005, te
     show_figures(plt, title)   
     
 
-def montage(X, maxChars = 256, title=''):  
+def montage(X, maxChars = 2500, title=''):  
     ''' 
     montage displays a square matrix of characters
     

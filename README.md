@@ -18,7 +18,7 @@ be used with E13B.
 
 run_batch.sc is a bash script that runs all of the programs in the directory
 
-The script file will create many files in the folder, ./plots.
+The script file will create many files in the folder, /tmp/plots.
 
 
 Python 3.4
