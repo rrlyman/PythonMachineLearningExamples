@@ -105,7 +105,7 @@ class network(b_network):
         with tf.name_scope("reshape_x_image") as scope:
             self._x_image = tf.reshape(self._ph.image, [-1,self._nCols,self._nRows,1])
         
-        image_summ = tf.image_summary("x_image", self._x_image)
+        image_summ = tf.summary.image("x_image", self._x_image)
         
         """# ==============================================================================
         
@@ -156,7 +156,9 @@ class network(b_network):
             
             # append the features, the 2nd on, that go directly to the fully connected layer
             for i in range(2,truthed_features.num_features ):
-                h_pool2_flat = tf.concat(1, [h_pool2_flat, self._ph[i]])  
+                print(i)
+                print(self._ph[i])
+                h_pool2_flat = tf.concat([h_pool2_flat, self._ph[i]],1)  
             h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
         
         """# ==============================================================================
@@ -184,7 +186,7 @@ class network(b_network):
         
             # 1e-8 added to eliminate the crash of training when taking log of 0
             cross_entropy = -tf.reduce_sum(self._ph[0]*tf.log(y_conv+ 1e-8  ))
-            ce_summ = tf.scalar_summary("cross entropy", cross_entropy)
+            ce_summ = tf.summary.scalar("cross entropy", cross_entropy)
             
         with tf.name_scope("train") as scope:
             self._train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
@@ -194,7 +196,8 @@ class network(b_network):
             self._prediction = tf.argmax(y_conv,1)
         
             self._accuracy = tf.reduce_mean(tf.cast(self._correct_prediction, dtype))
-            accuracy_summary = tf.scalar_summary("accuracy", self._accuracy)    
+            accuracy_summary = tf.summary.scalar("accuracy", self._accuracy)    
+            weight_summary = tf.summary.histogram("weights", W_fc2)
         """# ==============================================================================
         
         Start TensorFlow Interactive Session
@@ -202,13 +205,13 @@ class network(b_network):
         """# ==============================================================================   
        
         self._sess.run(tf.initialize_all_variables())  
-        self._merged = tf.merge_all_summaries()
+        self._merged = tf.summary.merge_all()
         tm = ""
         tp = datetime.datetime.now().timetuple()
         for i in range(4):
             tm += str(tp[i])+'-'
         tm += str(tp[4])    
-        self._writer = tf.train.SummaryWriter("/tmp/ds_logs/"+ tm, self._sess.graph)
+        self._writer = tf.summary.FileWriter("/tmp/ds_logs/"+ tm, self._sess.graph)
         
         def computeSize(s,tens):
             sumC = 1

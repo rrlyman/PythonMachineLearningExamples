@@ -49,7 +49,7 @@ import ocr_utils
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.cross_validation import StratifiedKFold
-from sklearn.lda import LDA
+from sklearn.discriminant_analysis import  LinearDiscriminantAnalysis as LDA  
 
 if __name__ == '__main__':
     #charsToTrain=range(48,58)

@@ -146,7 +146,7 @@ ocr_utils.plot_decision_regions(
 #########################################################################
 # run Linear Discriminant Analysis first then Logistic Regression
 
-from sklearn.lda import LDA
+from sklearn.discriminant_analysis import  LinearDiscriminantAnalysis as LDA
 n_components = 2
 lda = LDA(n_components=n_components)
 

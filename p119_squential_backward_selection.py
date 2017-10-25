@@ -80,6 +80,7 @@ class SBS():
         self.k_features = k_features
         self.test_size = test_size
         self.random_state = random_state
+        
     def fit(self, X, y):
         X_train, X_test, y_train, y_test = \
         train_test_split(X, y, test_size=self.test_size,

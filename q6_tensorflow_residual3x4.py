@@ -28,8 +28,7 @@ import datetime
 from collections import namedtuple
 import numpy as np
 import pandas as pd
-import n1_image_to_image as nnetwork  
-#import n1_residual3x4 as nnetwork  
+import n1_residual3x4 as nnetwork      
 import tensorflow as tf  
 dtype = np.float32
 #with tf.device('/GPU:0'):
@@ -68,10 +67,10 @@ if True:
     #output_feature_list = ['font_one_hot','image','italic','aspect_ratio','upper_case']   
 
     # train the digits 0-9 for all fonts
-    input_filters_dict = {'m_label': [43]+list(range(48,58)),'italic':0,'strength':.4}
-    #input_filters_dict = {'font':'BANKGOTHIC','m_label': list(range(48,58)),'italic':0,'strength':.7}    
+    #input_filters_dict = {'m_label': range(48,58)}
+    input_filters_dict = {'font':'ARIAL','m_label': list(range(48,58))+list(range(65,91))+list(range(97,123))}    
     #input_filters_dict = {}    
-    output_feature_list = ['low_pass_image','image']    
+    output_feature_list = ['m_label_one_hot','image']    
  
     """# ==============================================================================
     
@@ -80,11 +79,11 @@ if True:
     """# ==============================================================================
     ds = ocr_utils.read_data(input_filters_dict = input_filters_dict, 
                                 output_feature_list=output_feature_list,
-                                test_size = .2,
+                                test_size = .1,
                                 engine_type='tensorflow',dtype=dtype)    
     nn = nnetwork.network(ds.train)
-    nn.fit_entropy( ds.train,  nEpochs=5000)  
-    nn.test2(ds.test)
+    nn.fit( ds.train,  nEpochs=5000)  
+    nn.test(ds.test)
       
 #     train_a_font(input_filters_dict,  output_feature_list, nEpochs = 50000)    
     
@@ -103,7 +102,7 @@ else:
     # Change nEpochs to 5000 for better results
     for l in df1:
         input_filters_dict= {'font': (l[0],)}       
-        train_a_font(input_filters_dict,output_feature_list, nEpochs = 5000) 
+        train_a_font(input_filters_dict,output_feature_list, nEpochs = 500) 
     
     
 print ('\n########################### No Errors ####################################')

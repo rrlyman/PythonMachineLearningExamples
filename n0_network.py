@@ -30,7 +30,7 @@ class base_network(object):
                 summary_str = result[0]
  
                 self._writer.add_summary(summary_str, i)
-                train_accuracy = self._accuracy.eval(feed)    
+                train_accuracy = result[1]   
                 if train_accuracy <= (1.0 - 1e-5  ):
                     perfect_count=10;
                 else:
@@ -39,7 +39,7 @@ class base_network(object):
                         break;  
                     
                 print ("step %d, training accuracy %g"%(i, train_accuracy),flush=True)
-            self._train_step.run(feed_dict=feed)
+            self._sess.run(self._train_step,feed_dict=feed)
             
 
     

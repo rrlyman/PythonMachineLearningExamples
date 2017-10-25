@@ -122,7 +122,7 @@ ocr_utils.plot_decision_regions(
 
 
 weights, params = [], []
-for c in np.arange(-5, 5):
+for c in np.arange(0, 5):
     lr = LogisticRegression(C=10**c, random_state=0)
     lr.fit(X_train_std, y_train)
     weights.append(lr.coef_[0])
@@ -131,7 +131,7 @@ for c in np.arange(-5, 5):
 
 title = 'regression_path'
 weights, params = [], []
-for c in np.arange(-5, 5):
+for c in np.arange(0, 5):
     lr = LogisticRegression(C=10**c, random_state=0)
     lr.fit(X_train_std, y_train)
     weights.append(lr.coef_[1])

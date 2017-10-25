@@ -178,7 +178,7 @@ class NeuralNetMLP(object):
         """
         onehot = np.zeros((k, y.shape[0]))
         for idx, val in enumerate(y):
-            onehot[val, idx] = 1.0
+            onehot[int(val), idx] = 1.0
         return onehot
 
     def _initialize_weights(self):
@@ -587,7 +587,7 @@ class MLPGradientCheck(object):
         """
         onehot = np.zeros((k, y.shape[0]))
         for idx, val in enumerate(y):
-            onehot[val, idx] = 1.0
+            onehot[int(val), idx] = 1.0
         return onehot
 
     def _initialize_weights(self):

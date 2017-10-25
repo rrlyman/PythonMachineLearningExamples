@@ -169,7 +169,7 @@ class network(b_network):
         with tf.name_scope("xent") as scope:
             # 1e-8 added to eliminate the crash of training when taking log of 0
             cross_entropy = -tf.reduce_sum(self._ph[0]*tf.log(y_conv+1e-8))
-            ce_summ = tf.scalar_summary("cross entropy", cross_entropy)
+            ce_summ = tf.summary.scalar("cross entropy", cross_entropy)
                  
         with tf.name_scope("train") as scope:
             self._train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
@@ -179,7 +179,7 @@ class network(b_network):
             self._prediction = tf.argmax(y_conv,1)            
          
             self._accuracy = tf.reduce_mean(tf.cast(self._correct_prediction, dtype))
-            accuracy_summary = tf.scalar_summary("accuracy", self._accuracy)    
+            accuracy_summary = tf.summary.scalar("accuracy", self._accuracy)    
 
         """# ==============================================================================
         
@@ -188,7 +188,7 @@ class network(b_network):
         """# ==============================================================================          
         
         self._sess.run(tf.initialize_all_variables())  
-        self._merged = tf.merge_all_summaries()
+        self._merged = tf.summary.merge_all()
         tm = ""
         tp = datetime.datetime.now().timetuple()
         for i in range(4):
@@ -200,7 +200,7 @@ class network(b_network):
         # tensorboard --logdir '/tmp/ds_logs/'
         # See results on localhost:6006 
         
-        self._writer = tf.train.SummaryWriter("/tmp/ds_logs/"+ tm, self._sess.graph)
+        self._writer = tf.summary.FileWriter("/tmp/ds_logs/"+ tm, self._sess.graph)
         
     def computeSize(s,tens):
         sumC = 1

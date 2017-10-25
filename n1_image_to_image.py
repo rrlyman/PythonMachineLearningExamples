@@ -107,7 +107,7 @@ class network( b_network):
         with tf.name_scope("reshape_x_image") as scope:
             self._x_image = tf.reshape(self._ph.image, [-1,self._nCols,self._nRows,1])
         
-        image_summ = tf.image_summary("x_image", self._x_image)
+        image_summ = tf.summary.image("x_image", self._x_image)
         
         """# ==============================================================================
         
@@ -218,18 +218,18 @@ class network( b_network):
         with tf.name_scope("xent") as scope:
         
             # 1e-8 added to eliminate the crash of training when taking log of 0
-            cross_entropy = -tf.reduce_sum(self._ph[0]*tf.log(y_conv+ 1e-8  ))
+            self._cross_entropy = -tf.reduce_sum(self._ph[0]*tf.log(y_conv+ 1e-8  ))
             #cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
              #   logits, labels, name='xentropy')            
-            ce_summ = tf.scalar_summary("cross entropy", cross_entropy)
+            ce_summ = tf.summary.scalar("cross entropy", self._cross_entropy)
             
         with tf.name_scope("reshape_x_image2") as scope:
             self._x_image2 = tf.reshape(self._ph[0], [-1,int(self._nCols/2),int(self._nRows/2),1])
         
-        image_summ2 = tf.image_summary("x_image2", self._x_image2)            
+        image_summ2 = tf.summary.image("x_image2", self._x_image2)            
             
         with tf.name_scope("train") as scope:
-            self._train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+            self._train_step = tf.train.AdamOptimizer(1e-4).minimize(self._cross_entropy)
             #self._train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)            
     
         with tf.name_scope("test") as scope:        
@@ -237,21 +237,21 @@ class network( b_network):
             self._prediction = tf.argmax(y_conv,1)
         
             self._accuracy = tf.reduce_mean(tf.cast(self._correct_prediction, dtype))
-            accuracy_summary = tf.scalar_summary("accuracy", self._accuracy)    
+            accuracy_summary = tf.summary.scalar("accuracy", self._accuracy)    
         """# ==============================================================================
         
-        Start TensorFlow Interactive Session
+        Start TensorFlow Session
         
         """# ==============================================================================      
     
         self._sess.run(tf.initialize_all_variables())  
-        self._merged = tf.merge_all_summaries()
+        self._merged = tf.summary.merge_all()
         tm = ""
         tp = datetime.datetime.now().timetuple()
         for i in range(4):
             tm += str(tp[i])+'-'
         tm += str(tp[4])    
-        self._writer = tf.train.SummaryWriter("/tmp/ds_logs/"+ tm, self._sess.graph)
+        self._writer = tf.summary.FileWriter("/tmp/ds_logs/"+ tm, self._sess.graph)
         
         def computeSize(s,tens):
             sumC = 1
@@ -319,4 +319,36 @@ class network( b_network):
                 ocr_utils.montage(output_images,title='TensorFlow Output Images')         
                 ocr_utils.montage(input_images,title='TensorFlow Input Images')        
      
+    def fit_entropy(self, truthed_data, nEpochs=5000):    
+
+        perfect_count=10
+        for i in range(nEpochs):
+        
+            batch = truthed_data.next_batch(100)
+            # assign feature data to each placeholder
+            # the batch list is returned in the same order as the features requested
+            feed = {self._keep_prob: 0.5}
+            for j in range(truthed_data.num_features):
+                feed[self._ph[j]] = batch[j]  
+                
+            if i%100 == 0:
+
+                feed[self._keep_prob] = 1.0
+                result = self._sess.run([self._merged, self._cross_entropy ], feed_dict=feed)    
+                summary_str = result[0]
+ 
+                self._writer.add_summary(summary_str, i)
+                train_entropy = result[1]  
+                if train_entropy >= (2000 ):
+                    perfect_count=10;
+                else:
+                    perfect_count -= 1
+                    if perfect_count==0:
+                        break;   
+                    
+                print ("step %d, training entropy %g"%(i, train_entropy),flush=True)
+            self._sess.run(self._train_step,feed_dict=feed)
+            
+
+    
                   

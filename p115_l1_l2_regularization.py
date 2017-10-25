@@ -100,7 +100,7 @@ colors = ['blue', 'green', 'red', 'cyan',
 
 def weight_graph(regularization = 'l1'):
     weights, params = [], []
-    for c in np.arange(-4, 6):
+    for c in np.arange(0, 6):
         lr = LogisticRegression(penalty=regularization, C=10**c, random_state=0)
         lr.fit(X_train_std, y_train)
         weights.append(lr.coef_[1])

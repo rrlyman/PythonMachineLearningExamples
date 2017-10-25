@@ -70,7 +70,8 @@ import io
 from sklearn.metrics import accuracy_score
 from sklearn.decomposition import PCA
 from sklearn.metrics import accuracy_score
-from sklearn.lda import LDA
+#from sklearn.model_selection
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.cross_validation import train_test_split
 
@@ -233,7 +234,7 @@ ocr_utils.plot_decision_regions(
 
 
 n_components = 2
-lda = LDA(n_components=n_components)
+lda = LinearDiscriminantAnalysis(n_components=n_components)
 
 X_train_lda = lda.fit_transform(X_train, y_train)
 X_test_lda = lda.transform(X_test)

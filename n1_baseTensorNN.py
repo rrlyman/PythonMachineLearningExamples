@@ -141,11 +141,11 @@ class network(object):
         with tf.name_scope("xent") as scope:
         
             # 1e-8 added to eliminate the crash of training when taking log of 0
-            cross_entropy = -tf.reduce_sum(self._ph[0]*tf.log(y_conv+ 1e-8  ))
-            ce_summ = tf.scalar_summary("cross entropy", cross_entropy)
+            self._cross_entropy = -tf.reduce_sum(self._ph[0]*tf.log(y_conv+ 1e-8  ))
+            ce_summ = tf.scalar_summary("cross entropy", self._cross_entropy)
             
         with tf.name_scope("train") as scope:
-            self._train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
+            self._train_step = tf.train.AdamOptimizer(1e-4).minimize(self._cross_entropy)
     
         with tf.name_scope("test") as scope:        
             self._correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(self._ph[0],1))
@@ -155,10 +155,10 @@ class network(object):
             accuracy_summary = tf.scalar_summary("accuracy", self._accuracy)    
         """# ==============================================================================
         
-        Start TensorFlow Interactive Session
+        Start TensorFlow Session
         
         """# ==============================================================================          
-        self._sess = tf.InteractiveSession()          
+        self._sess = tf.Session()          
         self._sess.run(tf.initialize_all_variables())  
         self._merged = tf.merge_all_summaries()
         tm = ""
@@ -215,7 +215,7 @@ class network(object):
                 summary_str = result[0]
                 #acc = result[1]       
                 self._writer.add_summary(summary_str, i)
-                train_accuracy = self._accuracy.eval(feed)    
+                train_accuracy = result[1]  
                 if train_accuracy <= (1.0 - 1e-5  ):
                     perfect_count=10;
                 else:
@@ -224,7 +224,7 @@ class network(object):
                         break;  
                     
                 print ("step %d, training accuracy %g"%(i, train_accuracy),flush=True)
-            self._train_step.run(feed_dict=feed)
+            self._sess.run(self._train_step.run,feed_dict=feed)
             
 
     

@@ -57,8 +57,8 @@ SOFTWARE.
 import numpy as np
 import ocr_utils
 import matplotlib.pyplot as plt
-from sklearn.lda import LDA
-        
+#from sklearn.lda import LDA
+from sklearn.discriminant_analysis import  LinearDiscriminantAnalysis as LDA   
 print_limit = 20
 chars_to_train = range(48,58)
 columnsXY=range(0,20)
@@ -115,7 +115,7 @@ for label, mv in zip(unique_labels, mean_vecs):
 print('Within-class scatter matrix: {}x{}'.format(S_W.shape[0], S_W.shape[1]))
 
 print('Class label distribution: %s'
-    % np.bincount(np.array(y_train,dtype='int32'))[min(y_train):])
+    % np.bincount(np.array(y_train,dtype='int32'))[int(min(y_train)):])
 
 d = S_W.shape[1] # number of features
 S_W = np.zeros((d, d))
